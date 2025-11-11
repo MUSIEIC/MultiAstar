@@ -1,0 +1,166 @@
+#include "Agent.h"
+
+#include <fcntl.h>
+#include <utility>
+
+namespace RendezvousAstar {
+
+    std::unordered_set<int32_t> Agent::id_set_;
+    Agent::~Agent() {
+        id_set_.erase(id_);
+    }
+
+    Agent::Agent(const std::shared_ptr<NodeMap>& node_map, const int32_t id, Eigen::Vector3d initial_pos,
+        const Eigen::Vector3i& pos)
+        : id_(id), initial_pos_(std::move(initial_pos)) {
+        if (id_set_.find(id_) != id_set_.end()) {
+            while (id_set_.find(id_) != id_set_.end()) {
+                ++id_;
+            }
+            ROS_WARN("该id以存在，已将id修改为：%d", id_);
+        }
+        id_set_.insert(id_);
+        pos_      = RendezvousAstar::NodeMap::posD2I(initial_pos_);
+        auto node = node_map->getNode(pos_);
+        if (!node) {
+            node = std::make_shared<Node>(id, nullptr, pos_);
+            node_map->addNode(node);
+        }
+        node->setG(id, 0.0);
+    }
+
+    int32_t Agent::getID() const {
+        return id_;
+    }
+    Eigen::Vector3d Agent::getInitialPos() const {
+        return initial_pos_;
+    }
+    Eigen::Vector3i Agent::getPos() const {
+        return pos_;
+    }
+
+
+    void Agent::setPos(const Eigen::Vector3i& pos) {
+        pos_ = pos;
+    }
+
+    void Agent::setInitialPos(const Eigen::Vector3d& initial_pos) {
+        initial_pos_ = initial_pos;
+    }
+
+
+    UAV::UAV(const std::shared_ptr<NodeMap>& node_map) : Agent(node_map), state_(INIT) {
+        if (id_ <= 0) {
+            id_set_.erase(id_);
+            if (id_ == 0) {
+                id_ = 1;
+            } else {
+                id_ = -id_;
+            }
+            while (id_set_.find(id_) != id_set_.end()) {
+                ++id_;
+            }
+            id_set_.insert(id_);
+            ROS_WARN("UAV的id应为正数，已将id修改为：%d", id_);
+        }
+    }
+
+    UAV::UAV(const std::shared_ptr<NodeMap>& node_map, int32_t id, const Eigen::Vector3d& initial_pos,
+        const Eigen::Vector3i& pos)
+        : Agent(node_map, id, initial_pos, pos), state_(INIT) {
+        if (id_ <= 0) {
+            id_set_.erase(id_);
+            if (id_ == 0) {
+                id_ = 1;
+            } else {
+                id_ = -id_;
+            }
+            while (id_set_.find(id_) != id_set_.end()) {
+                ++id_;
+            }
+            id_set_.insert(id_);
+            ROS_WARN("UAV的id应为正数，已将id修改为：%d", id_);
+        }
+    }
+
+    UAV::STATE UAV::getState() const {
+        return state_;
+    }
+
+    Queue& UAV::getOpenList(const int32_t id) {
+        return open_list_;
+    }
+
+    List& UAV::getClosedList(const int32_t id) {
+        return closed_list_;
+    }
+
+    std::unordered_set<Eigen::Vector3i, NodeHash>& UAV::getInOpenList(const int32_t id) {
+        return in_open_list_;
+    }
+
+    void UAV::setState(const STATE& state) {
+        state_ = state;
+    }
+
+
+    UGV::UGV(const std::shared_ptr<NodeMap>& node_map) : Agent(node_map), state_(INIT) {
+        setPos(pos_);
+        if (id_ >= 0) {
+            id_set_.erase(id_);
+            if (id_ == 0) {
+                id_ = -1;
+            } else {
+                id_ = -id_;
+            }
+            while (id_set_.find(id_) != id_set_.end()) {
+                --id_;
+            }
+            id_set_.insert(id_);
+            ROS_WARN("UGV的id应为负数，已将id修改为：%d", id_);
+        }
+    }
+
+    UGV::UGV(const std::shared_ptr<NodeMap>& node_map, int32_t id, const Eigen::Vector3d& initial_pos,
+        const Eigen::Vector3i& pos)
+        : Agent(node_map, id, initial_pos, pos), state_(INIT) {
+        setPos(pos_);
+        if (id_ >= 0) {
+            id_set_.erase(id_);
+            if (id_ == 0) {
+                id_ = -1;
+            } else {
+                id_ = -id_;
+            }
+            while (id_set_.find(id_) != id_set_.end()) {
+                --id_;
+            }
+            id_set_.insert(id_);
+            ROS_WARN("UGV的id应为负数，已将id修改为：%d", id_);
+        }
+    }
+
+    void UGV::setPos(const Eigen::Vector3i& pos) {
+        pos_ = Eigen::Vector3i(pos[0], pos[1], 0);
+    }
+    UGV::STATE UGV::getState() const {
+        return state_;
+    }
+
+    Queue& UGV::getOpenList(const int32_t id) {
+        return open_list_[id];
+    }
+
+    List& UGV::getClosedList(const int32_t id) {
+        return closed_list_[id];
+    }
+
+    std::unordered_set<Eigen::Vector3i, NodeHash>& UGV::getInOpenList(const int32_t id) {
+        return in_open_list_[id];
+    }
+
+    void UGV::setState(const STATE& state) {
+        state_ = state;
+    }
+
+} // namespace RendezvousAstar
