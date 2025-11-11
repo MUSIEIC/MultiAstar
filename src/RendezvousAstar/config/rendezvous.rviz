@@ -116,7 +116,7 @@ Visualization Manager:
           Queue Size: 10
           Selectable: false
           Size (Pixels): 3
-          Size (m): 0.25
+          Size (m): 0.5
           Style: Boxes
           Topic: /voxel_map
           Unreliable: true

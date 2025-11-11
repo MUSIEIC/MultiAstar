@@ -1,22 +1,29 @@
-#include "Astar.h"
+//
+// Created by haung on 2025/11/11.
+//
+
+#ifndef MULTIASTAR_ROS_H
+#define MULTIASTAR_ROS_H
 #include "NodeMap.h"
 #include "visualizer.h"
-#include <Eigen/Eigen>
+#include <chrono>
 #include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace RendezvousAstar {
+    class Agent;
     struct Config {
         std::string mapTopic;
         std::string targetTopic;
-        double dilateRadius;
-        double voxelWidth;
+        double dilateRadius{};
+        double voxelWidth{};
         std::vector<double> mapBound;
 
-        Config(const ros::NodeHandle& nh_) {
+        explicit Config(const ros::NodeHandle& nh_) {
             nh_.getParam("MapTopic", mapTopic);
             nh_.getParam("TargetTopic", targetTopic);
             nh_.getParam("DilateRadius", dilateRadius);
@@ -27,8 +34,7 @@ namespace RendezvousAstar {
 
     class PathSearch {
     public:
-        PathSearch(const Config& conf, ros::NodeHandle& nh)
-            : config_(conf), nh_(nh), mapOccupiedInited(false), visualizer_(nh) {
+        PathSearch(Config conf, ros::NodeHandle& nh) : config_(std::move(conf)), nh_(nh), mapOccupiedInited(false) {
             const Eigen::Vector3i xyz((config_.mapBound[1] - config_.mapBound[0]) / config_.voxelWidth,
                 (config_.mapBound[3] - config_.mapBound[2]) / config_.voxelWidth,
                 (config_.mapBound[5] - config_.mapBound[4]) / config_.voxelWidth);
@@ -57,12 +63,11 @@ namespace RendezvousAstar {
                         || std::isinf(fdata[cur + 1]) || std::isnan(fdata[cur + 2]) || std::isinf(fdata[cur + 2])) {
                         continue;
                     }
-                    node_map_->getVoxelMap()->setOccupied(
+                    NodeMap::getVoxelMap()->setOccupied(
                         Eigen::Vector3d(fdata[cur + 0], fdata[cur + 1], fdata[cur + 2]));
                 }
 
-                node_map_->getVoxelMap()->dilate(
-                    std::ceil(config_.dilateRadius / node_map_->getVoxelMap()->getScale()));
+                NodeMap::getVoxelMap()->dilate(std::ceil(config_.dilateRadius / NodeMap::getVoxelMap()->getScale()));
 
                 mapOccupiedInited = true;
             }
@@ -78,36 +83,20 @@ namespace RendezvousAstar {
                                          * (config_.mapBound[5] - config_.mapBound[4] - 2 * config_.dilateRadius);
                 const Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, zGoal);
                 // const Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
-                if (node_map_->getVoxelMap()->query(goal) == 0) {
-                    visualizer_.visualizeStartGoal(goal, 0.25, startgoal_.size());
+                if (NodeMap::getVoxelMap()->query(goal) == 0) {
+                    Visualizer::getInstance(nh_).visualizeStartGoal(goal, 0.25, startgoal_.size());
                     startgoal_.emplace_back(goal);
                 } else {
                     ROS_WARN("Infeasible Position Selected !!!\n");
                 }
                 if (startgoal_.size() == 2) {
-                    Astar astar;
-                    auto spos                    = node_map_->posD2I(startgoal_[0]);
-                    auto gpos                    = node_map_->posD2I(startgoal_[1]);
-                    std::shared_ptr<Agent> agent = std::make_shared<UAV>(node_map_, 1, startgoal_[0], spos);
-                    // auto node                    = node_map_->getNode(spos);
-                    // if (!node) {
-                    //     node = std::make_shared<Node>(1, nullptr, agent->getPos());
-                    // }
-                    // node->setG(1, 0.0);
-                    // node_map_->addNode(node);
-                    auto begin = std::chrono::high_resolution_clock::now();
-                    auto state = astar.run(agent, gpos, node_map_, 1, 1, [](const Astar::STATE& state) {
-                        return state == Astar::STATE::reached || state == Astar::STATE::reached_and_common;
-                    });
-                    auto end   = std::chrono::high_resolution_clock::now();
-                    ROS_INFO("PathSearch: node num: %lu ------ time: %ld ms", node_map_->getNodeNum(),
-                        std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
-                    auto path = Astar::getRealPath(1, spos, gpos, node_map_);
-                    ROS_INFO("PathSearch: Astar state: %d,path size: %lu", state, path.size());
-
-                    visualizer_.visualizePath(path);
+                    plan_(startgoal_[0], startgoal_[1]);
                 }
             }
+        }
+
+        void setPlan(std::function<void(const Eigen::Vector3d& spos, const Eigen::Vector3d& epos)> plan) {
+            plan_ = std::move(plan);
         }
 
     private:
@@ -117,27 +106,9 @@ namespace RendezvousAstar {
         ros::Subscriber targetSub;
         std::shared_ptr<NodeMap> node_map_;
         std::vector<Eigen::Vector3d> startgoal_;
+        std::function<void(const Eigen::Vector3d& spos, const Eigen::Vector3d& epos)> plan_;
         bool mapOccupiedInited;
-        Visualizer visualizer_;
     };
-
 } // namespace RendezvousAstar
 
-int main(int argc, char** argv) {
-
-    setlocale(LC_ALL, "");
-    ros::init(argc, argv, "rendezvous_searching_node");
-    ros::NodeHandle nh;
-    RendezvousAstar::Config config(ros::NodeHandle("~"));
-
-    RendezvousAstar::PathSearch path_search(config, nh);
-
-
-    ros::Rate lr(1000);
-    while (ros::ok()) {
-        ros::spinOnce();
-        lr.sleep();
-    }
-
-    return 0;
-}
+#endif // MULTIASTAR_ROS_H

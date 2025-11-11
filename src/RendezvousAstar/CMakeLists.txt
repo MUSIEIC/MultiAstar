@@ -10,10 +10,10 @@ add_compile_options(-std=c++14)
 find_package(Eigen3 REQUIRED)
 find_package(rostest REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rosmsg
-  sensor_msgs
-  geometry_msgs
+        roscpp
+        rosmsg
+        sensor_msgs
+        geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -106,10 +106,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-#  LIBRARIES RendezvousAstar
-  CATKIN_DEPENDS roscpp rosmsgs sensor_msgs geometry_msgs
-#  DEPENDS system_lib
+        INCLUDE_DIRS include
+        #  LIBRARIES RendezvousAstar
+        CATKIN_DEPENDS roscpp rosmsgs sensor_msgs geometry_msgs
+        #  DEPENDS system_lib
 )
 
 ###########
@@ -119,19 +119,19 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
- include
-  ${catkin_INCLUDE_DIRS}
+        include
+        ${catkin_INCLUDE_DIRS}
         ${EIGEN3_INCLUDE_DIRS}
 )
 
 # Declare a C++ library
- add_library(${PROJECT_NAME}
-   src/node.cpp
-         src/NodeMap.cpp
-         src/Agent.cpp
-         src/Astar.cpp
-         src/visualizer.cpp
- )
+add_library(${PROJECT_NAME}
+        src/node.cpp
+        src/NodeMap.cpp
+        src/Agent.cpp
+        src/Astar.cpp
+        src/visualizer.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -141,7 +141,8 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
- add_executable(path_search src/path_search.cpp)
+# add_executable(one2one src/one2noe.cpp)
+add_executable(standard src/standard.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -154,30 +155,30 @@ include_directories(
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(path_search
-         ${PROJECT_NAME}
-   ${catkin_LIBRARIES}
-         ${Eigen_LIBRARIES}
- )
 
-if(CATKIN_ENABLE_TESTING)
-  enable_testing()
-endif()
+target_link_libraries(standard
+        ${PROJECT_NAME}
+        ${catkin_LIBRARIES}
+        ${Eigen_LIBRARIES}
+)
+if (CATKIN_ENABLE_TESTING)
+    enable_testing()
+endif ()
 
 add_rostest_gtest(node_map-test
-    test/node_map.test
-    test/test_main.cpp
-#    test/test_node.cpp
-#        test/test_node_map.cpp
-#        test/test_agent.cpp
+        test/node_map.test
+        test/test_main.cpp
+        #    test/test_node.cpp
+        #        test/test_node_map.cpp
+        #        test/test_agent.cpp
         test/test_astar.cpp)
 
 target_link_libraries(node_map-test
-    ${PROJECT_NAME}
-    ${catkin_LIBRARIES}
-    ${Eigen_LIBRARIES}
-    gtest_main
-    gtest)
+        ${PROJECT_NAME}
+        ${catkin_LIBRARIES}
+        ${Eigen_LIBRARIES}
+        gtest_main
+        gtest)
 #############
 ## Install ##
 #############

@@ -1,10 +1,10 @@
 <launch>
   <node pkg="mockamap" type="mockamap_node" name="mockamap_node" output="screen">
-  <param name="seed" type="int" value="511"/>
+  <param name="seed" type="int" value="5121"/>
   <param name="update_freq" type="double" value="1.0"/>
 
   <!--  box edge length, unit meter-->
-  <param name="resolution" type="double" value="0.25"/>
+  <param name="resolution" type="double" value="0.5"/>
 
   <!-- map size unit meter-->
   <param name="x_length" type="int" value="50"/>
