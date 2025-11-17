@@ -113,11 +113,9 @@ TEST(AstarTest, FullPathSearch)
     // }
     // auto end_time=std::chrono::high_resolution_clock::now();
     // ROS_WARN("time: %f ms",std::chrono::duration_cast<std::chrono::microseconds>(end_time-start_time).count()/1000.0);
-    auto state = astar.run(agent, target, nodeMap, path_id, path_num,
-        [](const Astar::STATE &reachstate)
-    {
-        return reachstate==Astar::STATE::reached||reachstate==Astar::STATE::reached_and_common;
-        return reachstate==Astar::STATE::common_over_threshold;
+    auto state = astar.run(agent, target, nodeMap, path_id, path_num, [](const Astar::STATE& reachstate) {
+        return reachstate == Astar::STATE::reached || reachstate == Astar::STATE::reached_and_common;
+        return reachstate == Astar::STATE::common_over_threshold;
     });
     ROS_WARN("state: %d",static_cast<int32_t>(state));
     // 验证搜索最终结束

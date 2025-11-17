@@ -38,11 +38,11 @@ namespace RendezvousAstar {
          * @param target 目标点坐标
          * @param nodeMap 节点地图指针
          * @param path_id 路径ID
-         * @param path_num 路径数量
+         * @param path_id_set commontset判定id集合
          * @return 当前搜索状态
          */
         STATE runOnce(std::shared_ptr<Agent>& agent, const Eigen::Vector3i& target,
-            const std::shared_ptr<NodeMap>& nodeMap, int32_t path_id, int32_t path_num);
+            const std::shared_ptr<NodeMap>& nodeMap, int32_t path_id, const std::vector<int32_t>& path_id_set);
 
         /**
          * @brief 运行完整的A*算法
@@ -50,12 +50,12 @@ namespace RendezvousAstar {
          * @param target 目标点坐标
          * @param nodeMap 节点地图指针
          * @param path_id 路径ID
-         * @param path_num 路径数量
+         * @param path_id_set commontset判定id集合
          * @param end_condition 终止条件
          * @return 最终搜索状态
          */
         STATE run(std::shared_ptr<Agent>& agent, const Eigen::Vector3i& target, const std::shared_ptr<NodeMap>& nodeMap,
-            int32_t path_id, int32_t path_num, const std::function<bool(STATE&)>& end_condition);
+            int32_t path_id, const std::vector<int32_t>& path_id_set, const std::function<bool(STATE&)>& end_condition);
 
         /**
          * @brief 设置阈值
@@ -98,6 +98,8 @@ namespace RendezvousAstar {
         // 获取公共点数量
         size_t getCommonNum() const;
 
+        static bool isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set);
+
         /// 3D环境下的移动方向和代价
         std::vector<std::array<double, 4>> direct3d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
             {{0.0, 0.0, 1.0, 1.0}}, {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{0.0, 0.0, -1.0, 1.0}},
@@ -113,6 +115,18 @@ namespace RendezvousAstar {
         std::vector<std::array<double, 4>> direct2d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
             {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{1.0, 1.0, 0.0, std::sqrt(2)}},
             {{1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 1.0, 0.0, std::sqrt(2)}}, {{-1.0, -1.0, 0.0, std::sqrt(2)}}}};
+
+        void resetCommonSet() {
+            common_set_.clear();
+        }
+
+        void addThresholdOneStep() {
+            threshold_ += step_;
+        }
+
+        auto& getCommonSet() {
+            return common_set_;
+        }
 
     private:
         std::unordered_set<Eigen::Vector3i, NodeHash, NodeEqual> common_set_; ///< 存储公共点的集合

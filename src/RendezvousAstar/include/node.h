@@ -34,7 +34,7 @@ namespace RendezvousAstar {
          */
         Node(int32_t pathID, const std::shared_ptr<Node>& parent, Eigen::Vector3i pos);
 
-        ~Node() = default;
+        ~Node()=default;
 
         /**
          * @brief 为指定路径添加节点信息
@@ -46,6 +46,11 @@ namespace RendezvousAstar {
          */
         bool addPath(int32_t pathID, double g, double h, const std::shared_ptr<Node>& parent);
 
+        void removePath(int32_t path_id);
+
+        void clearPath();
+
+        void setPath(int32_t pathID,double g,double h,const std::shared_ptr<Node>& parent);
         /**
          * @brief 设置指定路径的h值
          * @param pathID 路径标识符

@@ -123,6 +123,7 @@ namespace RendezvousAstar {
          */
         void printNodeSet() const;
 
+        void clear();
         /**
          * @brief 添加节点到节点集合中
          * @param node 要添加的节点

@@ -15,20 +15,26 @@ namespace RendezvousAstar {
     }
 
     bool Node::addPath(const int32_t pathID, const double g, const double h, const std::shared_ptr<Node>& parent) {
-        if (path_id_.find(pathID) != path_id_.end()) {
-            ROS_WARN("Node: 当前加入的pathID在该节点已存在");
-            return false;
-        }
+        // if (path_id_.find(pathID) != path_id_.end()) {
+        //     ROS_WARN("Node: 当前加入的pathID在该节点已存在");
+        //     return false;
+        // }
         path_id_.insert(pathID);
         g_[pathID]      = g;
         h_[pathID]      = h;
         parent_[pathID] = parent;
         return true;
     }
+    void Node::removePath(int32_t path_id) {
+        path_id_.erase(path_id);
+    }
+    void Node::clearPath() {
+        path_id_.clear();
+    }
 
     bool Node::setG(const int32_t pathID, const double g) {
         if (path_id_.find(pathID) == path_id_.end()) {
-            ROS_ERROR("Node: 该路径不存在");
+            ROS_ERROR("Node setG: 该路径不存在");
             return false;
         }
         g_[pathID] = g;
@@ -37,7 +43,7 @@ namespace RendezvousAstar {
 
     bool Node::setH(const int32_t pathID, const double h) {
         if (path_id_.find(pathID) == path_id_.end()) {
-            ROS_ERROR("Node: 该路径不存在");
+            ROS_ERROR("Node setH: 该路径不存在");
             return false;
         }
         h_[pathID] = h;
@@ -46,7 +52,7 @@ namespace RendezvousAstar {
 
     bool Node::setParent(const int32_t pathID, const std::shared_ptr<Node>& parent) {
         if (path_id_.find(pathID) == path_id_.end()) {
-            ROS_ERROR("Node: 该路径不存在");
+            ROS_ERROR("Node setParent: 该路径不存在");
             return false;
         }
         parent_[pathID] = parent;
@@ -55,7 +61,6 @@ namespace RendezvousAstar {
 
     double Node::getG(const int32_t pathID) const {
         if (path_id_.find(pathID) == path_id_.end()) {
-            ROS_ERROR("Node: 该路径不存在");
             return INT32_MAX;
         }
         return g_.at(pathID);
@@ -63,7 +68,7 @@ namespace RendezvousAstar {
 
     double Node::getH(const int32_t pathID) const {
         if (path_id_.find(pathID) == path_id_.end()) {
-            ROS_ERROR("Node: 该路径不存在");
+            ROS_ERROR("Node getH: 该路径不存在");
             return INT32_MAX;
         }
         return h_.at(pathID);
@@ -71,7 +76,7 @@ namespace RendezvousAstar {
 
     std::shared_ptr<Node> Node::getParent(const int32_t pathID) const {
         if (path_id_.find(pathID) == path_id_.end()) {
-            ROS_ERROR("Node: 该路径不存在");
+            ROS_ERROR("Node getParent: 该路径不存在");
             return nullptr;
         }
         return parent_.at(pathID).lock();

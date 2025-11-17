@@ -78,7 +78,9 @@ namespace RendezvousAstar {
             // ROS_WARN("节点指针：%p",it.second.get());
         }
     }
-
+    void NodeMap::clear() {
+        node_set_.clear();
+    }
     /**
      * @brief 添加节点到节点集合中
      * @param node 要添加的节点

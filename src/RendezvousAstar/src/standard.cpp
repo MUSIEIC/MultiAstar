@@ -10,9 +10,9 @@ namespace RendezvousAstar {
         Astar astar;
         auto sposi     = NodeMap::posD2I(spos);
         auto eposi     = NodeMap::posD2I(epos);
-        AgentPtr agent = std::make_shared<UAV>(NodeMap::getInstance(), 1, spos, sposi);
+        AgentPtr agent = std::make_shared<UAV>(1, spos, sposi);
         auto begin     = std::chrono::high_resolution_clock::now();
-        auto state     = astar.run(agent, eposi, NodeMap::getInstance(), 1, 1, [](const Astar::STATE& state) {
+        auto state     = astar.run(agent, eposi, NodeMap::getInstance(), 1, {1}, [](const Astar::STATE& state) {
             return state == Astar::STATE::reached || state == Astar::STATE::reached_and_common;
         });
         auto end       = std::chrono::high_resolution_clock::now();
@@ -31,7 +31,9 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     RendezvousAstar::Config config(ros::NodeHandle("~"));
     RendezvousAstar::PathSearch pathSearch(config, nh);
-    pathSearch.setPlan(std::bind(&RendezvousAstar::plan, std::placeholders::_1, std::placeholders::_2, std::ref(nh)));
+    pathSearch.setPlan([&nh](auto&& PH1, auto&& PH2) {
+        RendezvousAstar::plan(std::forward<decltype(PH1)>(PH1), std::forward<decltype(PH2)>(PH2), nh);
+    });
 
     ros::Rate lr(1000);
     while (ros::ok()) {

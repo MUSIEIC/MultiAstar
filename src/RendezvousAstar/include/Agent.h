@@ -22,9 +22,8 @@ namespace RendezvousAstar {
          * @param initial_pos 初始位置，默认为零向量
          * @param pos 当前位置，默认为零向量
          */
-        explicit Agent(const std::shared_ptr<NodeMap>& node_map, int32_t id = 0,
-            Eigen::Vector3d initial_pos = Eigen::Vector3d::Zero(),
-            const Eigen::Vector3i& pos  = Eigen::Vector3i::Zero());
+        explicit Agent(int32_t id = 0, Eigen::Vector3d initial_pos = Eigen::Vector3d::Zero(),
+            const Eigen::Vector3i& pos = Eigen::Vector3i::Zero());
 
         /**
          * @brief 虚析构函数
@@ -49,9 +48,11 @@ namespace RendezvousAstar {
          */
         Eigen::Vector3i getPos() const;
 
-        virtual Queue& getOpenList(int32_t id) = 0;
+        virtual Queue& getOpenList(int32_t path_id) = 0;
 
-        virtual List& getClosedList(int32_t id) = 0;
+        virtual List& getClosedList(int32_t path_id) = 0;
+
+        virtual void reset(int32_t path_id) = 0;
 
         virtual std::unordered_set<Eigen::Vector3i, NodeHash>& getInOpenList(int32_t id) = 0;
         /**
@@ -92,19 +93,16 @@ namespace RendezvousAstar {
 
         /**
          * @brief 默认构造函数
-         * @param node_map
          */
-        explicit UAV(const std::shared_ptr<NodeMap>& node_map);
+        explicit UAV();
 
         /**
          * @brief 带参数的构造函数
-         * @param node_map
          * @param id 智能体ID
          * @param initial_pos 初始位置
          * @param pos 当前位置
          */
-        UAV(const std::shared_ptr<NodeMap>& node_map, int32_t id, const Eigen::Vector3d& initial_pos,
-            const Eigen::Vector3i& pos);
+        UAV(int32_t id, const Eigen::Vector3d& initial_pos, const Eigen::Vector3i& pos);
 
         /**
          * @brief 虚析构函数
@@ -119,6 +117,7 @@ namespace RendezvousAstar {
 
         Queue& getOpenList(int32_t id) override;
         List& getClosedList(int32_t id) override;
+        void reset(int32_t id) override;
         std::unordered_set<Eigen::Vector3i, NodeHash>& getInOpenList(int32_t id) override;
         /**
          * @brief 设置当前状态
@@ -151,19 +150,16 @@ namespace RendezvousAstar {
 
         /**
          * @brief 默认构造函数
-         * @param node_map
          */
-        explicit UGV(const std::shared_ptr<NodeMap>& node_map);
+        explicit UGV();
 
         /**
          * @brief 带参数的构造函数
-         * @param node_map
          * @param id 智能体ID
          * @param initial_pos 初始位置
          * @param pos 当前位置
          */
-        UGV(const std::shared_ptr<NodeMap>& node_map, int32_t id, const Eigen::Vector3d& initial_pos,
-            const Eigen::Vector3i& pos);
+        UGV(int32_t id, const Eigen::Vector3d& initial_pos, const Eigen::Vector3i& pos);
 
         /**
          * @brief 虚析构函数
@@ -178,6 +174,7 @@ namespace RendezvousAstar {
 
         Queue& getOpenList(int32_t id) override;
         List& getClosedList(int32_t id) override;
+        void reset(int32_t id) override;
         std::unordered_set<Eigen::Vector3i, NodeHash>& getInOpenList(int32_t id) override;
 
         /**
