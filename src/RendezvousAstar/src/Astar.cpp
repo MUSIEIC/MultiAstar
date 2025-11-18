@@ -2,8 +2,24 @@
 
 namespace RendezvousAstar {
 
+
+    std::vector<std::array<double, 4>> Astar::direct3d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
+        {{0.0, 0.0, 1.0, 1.0}}, {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{0.0, 0.0, -1.0, 1.0}},
+        {{1.0, 1.0, 0.0, std::sqrt(2)}}, {{1.0, 0.0, 1.0, std::sqrt(2)}}, {{0.0, 1.0, 1.0, std::sqrt(2)}},
+        {{-1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 0.0, -1.0, std::sqrt(2)}}, {{0.0, -1.0, -1.0, std::sqrt(2)}},
+        {{1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 1.0, 0.0, std::sqrt(2)}}, {{1.0, 0.0, -1.0, std::sqrt(2)}},
+        {{-1.0, 0.0, 1.0, std::sqrt(2)}}, {{0.0, 1.0, -1.0, std::sqrt(2)}}, {{0.0, -1.0, 1.0, std::sqrt(2)}},
+        {{1.0, 1.0, 1.0, std::sqrt(3)}}, {{-1.0, -1.0, -1.0, std::sqrt(3)}}, {{1.0, 1.0, -1.0, std::sqrt(3)}},
+        {{1.0, -1.0, 1.0, std::sqrt(3)}}, {{-1.0, 1.0, 1.0, std::sqrt(3)}}, {{-1.0, -1.0, 1.0, std::sqrt(3)}},
+        {{-1.0, 1.0, -1.0, std::sqrt(3)}}, {{1.0, -1.0, -1.0, std::sqrt(3)}}}};
+
+    std::vector<std::array<double, 4>> Astar::direct2d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
+        {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{1.0, 1.0, 0.0, std::sqrt(2)}},
+        {{1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 1.0, 0.0, std::sqrt(2)}}, {{-1.0, -1.0, 0.0, std::sqrt(2)}}}};
+
     // 设置阈值，用于控制公共节点数量的上限
     void Astar::setThreshold(const int32_t threshold) {
+        std::lock_guard<std::mutex> lock(mutex_);
         threshold_ = threshold;
     }
 
@@ -60,8 +76,10 @@ namespace RendezvousAstar {
 
     // 获取公共节点集合的大小
     size_t Astar::getCommonNum() const {
+        std::lock_guard<std::mutex> lock(mutex_);
         return common_set_.size();
     }
+
     bool Astar::isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set) {
         if (path_id_set.empty()) {
             ROS_WARN("Astar::isCommon: path_id_set为空");
@@ -100,6 +118,7 @@ namespace RendezvousAstar {
 
         // 如果当前节点被所有目标路径访问过且在地面层，则加入公共集合
         if (isCommon(now, path_id_set)) {
+            std::lock_guard<std::mutex> lock(mutex_);
             common_set_.insert(now->getPos());
         }
         // 判断是否到达目标点
@@ -165,13 +184,13 @@ namespace RendezvousAstar {
         auto begin_time = std::chrono::high_resolution_clock::now();
 
         // agent初始化
-        agent->getOpenList(path_id).clear();
-        agent->getInOpenList(path_id).clear();
-        agent->getOpenList(path_id).insert(std::array<double, 4>{0.0, static_cast<double>(agent->getPos()[0]),
-            static_cast<double>(agent->getPos()[1]), static_cast<double>(agent->getPos()[2])});
-        agent->getInOpenList(path_id).insert(agent->getPos());
-        agent->getClosedList(path_id).clear();
-
+        // agent->getOpenList(path_id).clear();
+        // agent->getInOpenList(path_id).clear();
+        // agent->getOpenList(path_id).insert(std::array<double, 4>{0.0, static_cast<double>(agent->getPos()[0]),
+        //     static_cast<double>(agent->getPos()[1]), static_cast<double>(agent->getPos()[2])});
+        // agent->getInOpenList(path_id).insert(agent->getPos());
+        // agent->getClosedList(path_id).clear();
+        agent->reset(path_id);
 
         // 循环执行A*算法直到满足结束条件或超时
         uint32_t cnt = 0;

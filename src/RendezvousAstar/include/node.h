@@ -3,6 +3,7 @@
 
 #include <Eigen/Eigen>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 namespace RendezvousAstar {
@@ -34,7 +35,7 @@ namespace RendezvousAstar {
          */
         Node(int32_t pathID, const std::shared_ptr<Node>& parent, Eigen::Vector3i pos);
 
-        ~Node()=default;
+        ~Node() = default;
 
         /**
          * @brief 为指定路径添加节点信息
@@ -50,7 +51,7 @@ namespace RendezvousAstar {
 
         void clearPath();
 
-        void setPath(int32_t pathID,double g,double h,const std::shared_ptr<Node>& parent);
+        void setPath(int32_t pathID, double g, double h, const std::shared_ptr<Node>& parent);
         /**
          * @brief 设置指定路径的h值
          * @param pathID 路径标识符
@@ -114,6 +115,7 @@ namespace RendezvousAstar {
 
         // pathID对应的父节点
         std::unordered_map<int32_t, std::weak_ptr<Node>> parent_;
+        mutable std::mutex mutex_;
     };
 
 } // namespace RendezvousAstar

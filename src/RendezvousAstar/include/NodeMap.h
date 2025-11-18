@@ -5,6 +5,7 @@
 #include <Eigen/Eigen>
 #include <memory>
 #include <unordered_map>
+#include <mutex>
 
 #include "voxel_map.hpp"
 #include <boost/mpl/size.hpp>
@@ -57,6 +58,7 @@ namespace RendezvousAstar {
         static bool voxel_map_init; ///< 体素地图是否初始化标志
         static std::shared_ptr<voxel_map::VoxelMap> voxel_map_; ///< 体素地图指针
         std::unordered_map<Eigen::Vector3i, std::shared_ptr<Node>, NodeHash, NodeEqual> node_set_; ///< 节点集合
+        static std::mutex mutex_;
 
     public:
         /**

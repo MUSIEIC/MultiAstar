@@ -5,20 +5,26 @@
 
 namespace RendezvousAstar {
 
+    std::mutex Agent::id_set_mutex_;
     std::unordered_set<int32_t> Agent::id_set_;
+
     Agent::~Agent() {
+        std::lock_guard<std::mutex> lock(id_set_mutex_);
         id_set_.erase(id_);
     }
 
     Agent::Agent(const int32_t id, Eigen::Vector3d initial_pos, const Eigen::Vector3i& pos)
         : id_(id), initial_pos_(std::move(initial_pos)) {
-        if (id_set_.find(id_) != id_set_.end()) {
-            while (id_set_.find(id_) != id_set_.end()) {
-                ++id_;
+        {
+            std::lock_guard<std::mutex> lock(id_set_mutex_);
+            if (id_set_.find(id_) != id_set_.end()) {
+                while (id_set_.find(id_) != id_set_.end()) {
+                    ++id_;
+                }
+                ROS_WARN("该id以存在，已将id修改为：%d", id_);
             }
-            ROS_WARN("该id以存在，已将id修改为：%d", id_);
+            id_set_.insert(id_);
         }
-        id_set_.insert(id_);
         pos_      = RendezvousAstar::NodeMap::posD2I(initial_pos_);
         auto node = NodeMap::getInstance()->getNode(pos_);
         if (!node) {
@@ -35,11 +41,13 @@ namespace RendezvousAstar {
         return initial_pos_;
     }
     Eigen::Vector3i Agent::getPos() const {
+        std::lock_guard<std::mutex> lock(mutex_);
         return pos_;
     }
 
 
     void Agent::setPos(const Eigen::Vector3i& pos) {
+        std::lock_guard<std::mutex> lock(mutex_);
         pos_ = pos;
     }
 
@@ -49,6 +57,7 @@ namespace RendezvousAstar {
 
 
     UAV::UAV() : Agent(), state_(INIT) {
+        std::lock_guard<std::mutex> lock(id_set_mutex_);
         if (id_ <= 0) {
             id_set_.erase(id_);
             if (id_ == 0) {
@@ -66,6 +75,7 @@ namespace RendezvousAstar {
 
     UAV::UAV(int32_t id, const Eigen::Vector3d& initial_pos, const Eigen::Vector3i& pos)
         : Agent(id, initial_pos, pos), state_(INIT) {
+        std::lock_guard<std::mutex> lock(id_set_mutex_);
         if (id_ <= 0) {
             id_set_.erase(id_);
             if (id_ == 0) {
@@ -82,18 +92,22 @@ namespace RendezvousAstar {
     }
 
     UAV::STATE UAV::getState() const {
+        std::lock_guard<std::mutex> lock(mutex_);
         return state_;
     }
 
     Queue& UAV::getOpenList(const int32_t id) {
+        std::lock_guard<std::mutex> lock(mutex_);
         return open_list_;
     }
 
     List& UAV::getClosedList(const int32_t id) {
+        std::lock_guard<std::mutex> lock(mutex_);
         return closed_list_;
     }
 
     void UAV::reset(int32_t id) {
+        std::lock_guard<std::mutex> lock(mutex_);
         state_ = READY;
         open_list_.clear();
         closed_list_.clear();
@@ -109,6 +123,7 @@ namespace RendezvousAstar {
         in_open_list_.insert(pos_);
     }
 
+    //线程不安全 提供接口更合理
     std::unordered_set<Eigen::Vector3i, NodeHash>& UAV::getInOpenList(const int32_t id) {
         return in_open_list_;
     }
@@ -119,6 +134,7 @@ namespace RendezvousAstar {
 
 
     UGV::UGV() : Agent(), state_(INIT) {
+        std::lock_guard<std::mutex> lock(id_set_mutex_);
         setPos(pos_);
         if (id_ >= 0) {
             id_set_.erase(id_);
@@ -138,6 +154,7 @@ namespace RendezvousAstar {
     UGV::UGV(int32_t id, const Eigen::Vector3d& initial_pos, const Eigen::Vector3i& pos)
         : Agent(id, initial_pos, pos), state_(INIT) {
         setPos(pos_);
+        std::lock_guard<std::mutex> lock(id_set_mutex_);
         if (id_ >= 0) {
             id_set_.erase(id_);
             if (id_ == 0) {
@@ -154,20 +171,25 @@ namespace RendezvousAstar {
     }
 
     void UGV::setPos(const Eigen::Vector3i& pos) {
+        std::lock_guard<std::mutex> lock(mutex_);
         pos_ = Eigen::Vector3i(pos[0], pos[1], 0);
     }
     UGV::STATE UGV::getState() const {
+        std::lock_guard<std::mutex> lock(mutex_);
         return state_;
     }
 
     Queue& UGV::getOpenList(const int32_t id) {
+        std::lock_guard<std::mutex> lock(mutex_);
         return open_list_[id];
     }
 
     List& UGV::getClosedList(const int32_t id) {
+        std::lock_guard<std::mutex> lock(mutex_);
         return closed_list_[id];
     }
     void UGV::reset(int32_t id) {
+        std::lock_guard<std::mutex> lock(mutex_);
         state_ = READY;
         open_list_[id].clear();
         closed_list_[id].clear();
@@ -185,10 +207,12 @@ namespace RendezvousAstar {
     }
 
     std::unordered_set<Eigen::Vector3i, NodeHash>& UGV::getInOpenList(const int32_t id) {
+        std::lock_guard<std::mutex> lock(mutex_);
         return in_open_list_[id];
     }
 
     void UGV::setState(const STATE& state) {
+        std::lock_guard<std::mutex> lock(mutex_);
         state_ = state;
     }
 

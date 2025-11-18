@@ -72,6 +72,8 @@ namespace RendezvousAstar {
         int32_t id_; ///< 智能体唯一标识符
         Eigen::Vector3d initial_pos_; ///< 智能体初始位置（三维浮点坐标）
         Eigen::Vector3i pos_; ///< 智能体当前位置（三维整数坐标）
+        mutable std::mutex mutex_;
+        static std::mutex id_set_mutex_;
     };
 
 

@@ -101,30 +101,23 @@ namespace RendezvousAstar {
         static bool isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set);
 
         /// 3D环境下的移动方向和代价
-        std::vector<std::array<double, 4>> direct3d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
-            {{0.0, 0.0, 1.0, 1.0}}, {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{0.0, 0.0, -1.0, 1.0}},
-            {{1.0, 1.0, 0.0, std::sqrt(2)}}, {{1.0, 0.0, 1.0, std::sqrt(2)}}, {{0.0, 1.0, 1.0, std::sqrt(2)}},
-            {{-1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 0.0, -1.0, std::sqrt(2)}}, {{0.0, -1.0, -1.0, std::sqrt(2)}},
-            {{1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 1.0, 0.0, std::sqrt(2)}}, {{1.0, 0.0, -1.0, std::sqrt(2)}},
-            {{-1.0, 0.0, 1.0, std::sqrt(2)}}, {{0.0, 1.0, -1.0, std::sqrt(2)}}, {{0.0, -1.0, 1.0, std::sqrt(2)}},
-            {{1.0, 1.0, 1.0, std::sqrt(3)}}, {{-1.0, -1.0, -1.0, std::sqrt(3)}}, {{1.0, 1.0, -1.0, std::sqrt(3)}},
-            {{1.0, -1.0, 1.0, std::sqrt(3)}}, {{-1.0, 1.0, 1.0, std::sqrt(3)}}, {{-1.0, -1.0, 1.0, std::sqrt(3)}},
-            {{-1.0, 1.0, -1.0, std::sqrt(3)}}, {{1.0, -1.0, -1.0, std::sqrt(3)}}}};
+        static std::vector<std::array<double, 4>> direct3d_;
 
         /// 2D环境下的移动方向和代价
-        std::vector<std::array<double, 4>> direct2d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
-            {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{1.0, 1.0, 0.0, std::sqrt(2)}},
-            {{1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 1.0, 0.0, std::sqrt(2)}}, {{-1.0, -1.0, 0.0, std::sqrt(2)}}}};
+        static std::vector<std::array<double, 4>> direct2d_;
 
         void resetCommonSet() {
+            std::lock_guard<std::mutex> lock(mutex_);
             common_set_.clear();
         }
 
         void addThresholdOneStep() {
+            std::lock_guard<std::mutex> lock(mutex_);
             threshold_ += step_;
         }
 
         auto& getCommonSet() {
+            std::lock_guard<std::mutex> lock(mutex_);
             return common_set_;
         }
 
@@ -132,6 +125,7 @@ namespace RendezvousAstar {
         std::unordered_set<Eigen::Vector3i, NodeHash, NodeEqual> common_set_; ///< 存储公共点的集合
         int32_t threshold_; ///< 阈值
         int32_t step_; ///< 步数限制
+        mutable std::mutex mutex_;
     };
 
 } // namespace RendezvousAstar
