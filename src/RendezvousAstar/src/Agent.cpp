@@ -101,17 +101,17 @@ namespace RendezvousAstar {
         return open_list_;
     }
 
-    List& UAV::getClosedList(const int32_t id) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return closed_list_;
-    }
+    // List& UAV::getClosedList(const int32_t id) {
+    //     std::lock_guard<std::mutex> lock(mutex_);
+    //     return closed_list_;
+    // }
 
     void UAV::reset(int32_t id) {
         std::lock_guard<std::mutex> lock(mutex_);
         state_ = READY;
         open_list_.clear();
-        closed_list_.clear();
-        in_open_list_.clear();
+        // closed_list_.clear();
+        // in_open_list_.clear();
         auto node = NodeMap::getInstance()->getNode(pos_);
         if (!node) {
             node = std::make_shared<Node>(id, nullptr, pos_);
@@ -120,13 +120,13 @@ namespace RendezvousAstar {
         node->addPath(id, 0, 0, nullptr);
         open_list_.insert(std::array<double, 4>{
             0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
-        in_open_list_.insert(pos_);
+        // in_open_list_.insert(pos_);
     }
 
     //线程不安全 提供接口更合理
-    std::unordered_set<Eigen::Vector3i, NodeHash>& UAV::getInOpenList(const int32_t id) {
-        return in_open_list_;
-    }
+    // std::unordered_set<Eigen::Vector3i, NodeHash>& UAV::getInOpenList(const int32_t id) {
+    //     return in_open_list_;
+    // }
 
     void UAV::setState(const STATE& state) {
         state_ = state;
@@ -184,16 +184,16 @@ namespace RendezvousAstar {
         return open_list_[id];
     }
 
-    List& UGV::getClosedList(const int32_t id) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return closed_list_[id];
-    }
+    // List& UGV::getClosedList(const int32_t id) {
+    //     std::lock_guard<std::mutex> lock(mutex_);
+    //     return closed_list_[id];
+    // }
     void UGV::reset(int32_t id) {
         std::lock_guard<std::mutex> lock(mutex_);
         state_ = READY;
         open_list_[id].clear();
-        closed_list_[id].clear();
-        in_open_list_[id].clear();
+        // closed_list_[id].clear();
+        // in_open_list_[id].clear();
         auto node = NodeMap::getInstance()->getNode(pos_);
         if (!node) {
             node = std::make_shared<Node>(id, nullptr, pos_);
@@ -203,13 +203,13 @@ namespace RendezvousAstar {
         ;
         open_list_[id].insert(std::array<double, 4>{
             0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
-        in_open_list_[id].insert(pos_);
+        // in_open_list_[id].insert(pos_);
     }
 
-    std::unordered_set<Eigen::Vector3i, NodeHash>& UGV::getInOpenList(const int32_t id) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return in_open_list_[id];
-    }
+    // std::unordered_set<Eigen::Vector3i, NodeHash>& UGV::getInOpenList(const int32_t id) {
+    //     std::lock_guard<std::mutex> lock(mutex_);
+    //     return in_open_list_[id];
+    // }
 
     void UGV::setState(const STATE& state) {
         std::lock_guard<std::mutex> lock(mutex_);

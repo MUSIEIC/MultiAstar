@@ -17,6 +17,9 @@ namespace RendezvousAstar {
      */
     class Node {
     public:
+        static std::atomic<int32_t> version_;
+
+        enum STATE { UNUSED, INOPEN, INCLOSED, INCOMMONSET};
         /**
          * @brief 构造函数，使用坐标和路径ID初始化节点
          * @param pathID 路径标识符
@@ -76,6 +79,7 @@ namespace RendezvousAstar {
          */
         bool setParent(int32_t pathID, const std::shared_ptr<Node>& parent);
 
+        bool setState(int32_t pathID, STATE state);
         /**
          * @brief 获取指定路径的h值
          * @param pathID 路径标识符
@@ -90,6 +94,9 @@ namespace RendezvousAstar {
          */
         double getG(int32_t pathID) const;
 
+        STATE getState(int32_t pathID) const;
+
+        int32_t getPathVersion(int32_t pathID) const;
         /**
          * @brief 获取指定路径的父节点
          * @param pathID 路径标识符
@@ -108,11 +115,15 @@ namespace RendezvousAstar {
         const Eigen::Vector3i node_pos_;
         // 存储经过此节点的所有路径ID集合
         std::unordered_set<int32_t> path_id_;
+
         // 存储各路径对应的g值映射表
         std::unordered_map<int32_t, double> g_;
         // 存储各路径对应的h值映射表
         std::unordered_map<int32_t, double> h_;
 
+        std::unordered_map<int32_t, STATE> state_;
+
+        std::unordered_map<int32_t, int32_t> path_version_;
         // pathID对应的父节点
         std::unordered_map<int32_t, std::weak_ptr<Node>> parent_;
         mutable std::mutex mutex_;

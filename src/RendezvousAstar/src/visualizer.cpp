@@ -1,13 +1,17 @@
 #include "visualizer.h"
-
+#include <Ros.hpp>
+#include<Eigen/Eigen>
 #include <visualization_msgs/Marker.h>
+#include<geometry_msgs/PointStamped.h>
 
-Visualizer::Visualizer(ros::NodeHandle& nh) : nh_(nh) {
+Visualizer::Visualizer(ros::NodeHandle& nh) : nh_(nh),config_(std::make_shared<RendezvousAstar::Config>(ros::NodeHandle("~"))) {
     spherePub_ = nh.advertise<visualization_msgs::Marker>("/visualizer/spheres", 1000);
     pathPub_   = nh.advertise<visualization_msgs::Marker>("/visualizer/route", 10);
+    commonPub_ = nh.advertise<geometry_msgs::PointStamped>("/visualizer/common_point", 10);
+    commonSetPub_ = nh.advertise<visualization_msgs::Marker>("/visualizer/common_set", 1000);
 }
 
-void Visualizer::visualizeStartGoal(const Eigen::Vector3d& center, const double& radius, int sg) {
+void Visualizer::visualizeStartGoal(const Eigen::Vector3d& center, const double& radius, int sg) const {
     visualization_msgs::Marker sphereMarkers;
 
     sphereMarkers.id                 = sg;
@@ -42,7 +46,7 @@ void Visualizer::visualizeStartGoal(const Eigen::Vector3d& center, const double&
     spherePub_.publish(sphereMarkers);
 }
 
-void Visualizer::visualizePath(const std::vector<Eigen::Vector3d>& route) {
+void Visualizer::visualizePath(const std::vector<Eigen::Vector3d>& route) const {
     visualization_msgs::Marker routeMarker;
 
     routeMarker.id                 = 0;
@@ -83,4 +87,43 @@ void Visualizer::visualizePath(const std::vector<Eigen::Vector3d>& route) {
 
         pathPub_.publish(routeMarker);
     }
+}
+
+// 移除了inline关键字，确保函数正确链接
+void Visualizer::visualizeCommon(const Eigen::Vector3d &common) const {
+    geometry_msgs::PointStamped p;
+    p.header.frame_id = "odom";
+    p.header.stamp = ros::Time::now();
+    p.point.x = common.x();
+    p.point.y = common.y();
+    p.point.z = common.z();
+    commonPub_.publish(p);
+}
+
+void Visualizer::visualizeCommonset(
+    const std::vector<std::shared_ptr<RendezvousAstar::Node>>& commonset) const {
+    visualization_msgs::Marker comarker;
+    geometry_msgs::Point p;
+    comarker.header.frame_id = "odom";
+    comarker.ns = "common_set";
+    comarker.id = 0;
+    comarker.type = visualization_msgs::Marker::CUBE_LIST;
+    comarker.action = visualization_msgs::Marker::ADD;
+    comarker.scale.x = config_->voxelWidth;
+    comarker.scale.y = config_->voxelWidth;
+    comarker.scale.z = config_->voxelWidth;
+    comarker.color.r = 233;
+    comarker.color.g = 185;
+    comarker.color.b = 110;
+    comarker.color.a = 0.5;
+
+    for (const auto &s : commonset)
+    {
+        auto rs=RendezvousAstar::NodeMap::posI2D(s->getPos());
+        p.x = rs.x();
+        p.y = rs.y();
+        p.z = rs.z();
+        comarker.points.push_back(p);
+    }
+    commonSetPub_.publish(comarker);
 }

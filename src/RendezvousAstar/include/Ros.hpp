@@ -5,8 +5,8 @@
 #ifndef MULTIASTAR_ROS_H
 #define MULTIASTAR_ROS_H
 #include "NodeMap.h"
-#include "visualizer.h"
 #include <chrono>
+#include "visualizer.h"
 #include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>

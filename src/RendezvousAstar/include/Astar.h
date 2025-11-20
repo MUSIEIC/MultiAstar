@@ -122,7 +122,8 @@ namespace RendezvousAstar {
         }
 
     private:
-        std::unordered_set<Eigen::Vector3i, NodeHash, NodeEqual> common_set_; ///< 存储公共点的集合
+        // std::unordered_set<Eigen::Vector3i, NodeHash, NodeEqual> common_set_; ///< 存储公共点的集合
+        std::vector<std::shared_ptr<Node>> common_set_;
         int32_t threshold_; ///< 阈值
         int32_t step_; ///< 步数限制
         mutable std::mutex mutex_;
