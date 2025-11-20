@@ -20,10 +20,7 @@ namespace RendezvousAstar {
     }
 
     bool Node::addPath(const int32_t pathID, const double g, const double h, const std::shared_ptr<Node>& parent) {
-        // if (path_id_.find(pathID) != path_id_.end()) {
-        //     ROS_WARN("Node: 当前加入的pathID在该节点已存在");
-        //     return false;
-        // }
+
         std::lock_guard<std::mutex> lock(mutex_);
         path_id_.insert(pathID);
         path_version_[pathID] = version_;

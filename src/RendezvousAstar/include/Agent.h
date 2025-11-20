@@ -8,8 +8,7 @@
 #include <unordered_set>
 namespace RendezvousAstar {
     using Queue = std::set<std::array<double, 4>>;
-    // using Queue=std::priority_queue<std::array<double,4>,std::vector<std::array<double,4>>,std::greater<>>;
-    using List = std::unordered_set<Eigen::Vector3i, NodeHash, NodeEqual>;
+    using List  = std::unordered_set<Eigen::Vector3i, NodeHash, NodeEqual>;
 
     /**
      * @brief Agent类，表示一个智能体(agent)，是UAV和UGV的基类
@@ -50,11 +49,9 @@ namespace RendezvousAstar {
 
         virtual Queue& getOpenList(int32_t path_id) = 0;
 
-        // virtual List& getClosedList(int32_t path_id) = 0;
 
         virtual void reset(int32_t path_id) = 0;
 
-        // virtual std::unordered_set<Eigen::Vector3i, NodeHash>& getInOpenList(int32_t id) = 0;
         /**
          * @brief 设置当前位置
          * @param pos 新的位置
@@ -118,9 +115,7 @@ namespace RendezvousAstar {
         STATE getState() const;
 
         Queue& getOpenList(int32_t id) override;
-        // List& getClosedList(int32_t id) override;
         void reset(int32_t id) override;
-        // std::unordered_set<Eigen::Vector3i, NodeHash>& getInOpenList(int32_t id) override;
         /**
          * @brief 设置当前状态
          * @param state 新的状态
@@ -130,8 +125,6 @@ namespace RendezvousAstar {
     private:
         STATE state_; ///< UAV当前状态
         Queue open_list_;
-        // List closed_list_;
-        // std::unordered_set<Eigen::Vector3i, NodeHash> in_open_list_;
     };
 
     /**
@@ -175,9 +168,7 @@ namespace RendezvousAstar {
         STATE getState() const;
 
         Queue& getOpenList(int32_t id) override;
-        // List& getClosedList(int32_t id) override;
         void reset(int32_t id) override;
-        // std::unordered_set<Eigen::Vector3i, NodeHash>& getInOpenList(int32_t id) override;
 
         /**
          * @brief 设置当前位置（重写父类方法）
@@ -194,8 +185,6 @@ namespace RendezvousAstar {
     private:
         STATE state_; ///< UGV当前状态
         std::unordered_map<int32_t, Queue> open_list_;
-        // std::unordered_map<int32_t, List> closed_list_;
-        // std::unordered_map<int32_t, std::unordered_set<Eigen::Vector3i, NodeHash>> in_open_list_;
     };
 
 } // namespace RendezvousAstar

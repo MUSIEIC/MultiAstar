@@ -8,16 +8,6 @@ namespace RendezvousAstar {
 
     bool NodeMap::voxel_map_init = false;
 
-    /**
-     * @brief NodeMap构造函数
-     */
-    // NodeMap::NodeMap():
-    // node_set_()
-    // {
-    //     // Eigen::Vector3i xyz(20,20,8);
-    //     // Eigen::Vector3d offset(-2.5,-2.5,0.0);
-    //     // voxel_map_=std::make_shared<voxel_map::VoxelMap>(xyz,offset,0.25);
-    // }
 
     /**
      * @brief 根据坐标向量获取节点
@@ -78,7 +68,6 @@ namespace RendezvousAstar {
     void NodeMap::printNodeSet() const {
         for (const auto& it : node_set_) {
             ROS_WARN("节点位置：%d,%d,%d", it.first.x(), it.first.y(), it.first.z());
-            // ROS_WARN("节点指针：%p",it.second.get());
         }
     }
     void NodeMap::clear() {

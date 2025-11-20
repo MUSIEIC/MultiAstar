@@ -46,21 +46,12 @@ namespace RendezvousAstar {
                 return p1 < p2;
             };
 
-            // std::priority_queue<std::shared_ptr<Node>, std::vector<std::shared_ptr<Node>>, decltype(compare)> pq(
-            //     compare);
-            //
-            //
-            // auto node_map = NodeMap::getInstance();
-            // for (const auto& node : node_set) {
-            //     pq.push(node);
-            // }
 
             sort(node_set.begin(), node_set.end(), compare);
             return *node_set.begin();
-            // return pq.top();
         }
 
-        //TODO: 最优汇合点优化
+        // TODO: 最优汇合点优化
         void plan(const Eigen::Vector3d& uav_pos, const Eigen::Vector3d& ugv_pos, ros::NodeHandle& nh) {
             auto uav_pos_i = NodeMap::posD2I(uav_pos);
             auto ugv_pos_i = NodeMap::posD2I(ugv_pos);
@@ -86,7 +77,6 @@ namespace RendezvousAstar {
                 if (state_ugv != Astar::STATE::reached && state_ugv != Astar::STATE::map_search_done) {
                     state_ugv = astar_.runOnce(ugv_, uav_pos_i, NodeMap::getInstance(), ugv_->getID(), path_id_set_);
                 }
-                // if (state_uav == Astar::STATE::reached || state_uav == Astar::STATE::map_search_done) {
                 if (state_uav == Astar::STATE::map_search_done) {
                     break;
                 }
@@ -142,8 +132,6 @@ namespace RendezvousAstar {
             //----------------搜索--------------------------------------------------------------------------
             const auto time_begin = std::chrono::high_resolution_clock::now();
 
-            // Astar::STATE state_uav = Astar::STATE::searching, state_ugv = Astar::STATE::searching;
-
             std::thread ugv_plan([&]() {
                 ROS_INFO("ugv thread");
                 const auto state_ugv = astar_.run(
@@ -180,7 +168,6 @@ namespace RendezvousAstar {
 
             ROS_INFO("nodeset num: %lu", NodeMap::getInstance()->getNodeNum());
 
-            // Config config(ros::NodeHandle("~"));
             Visualizer& visualizer = Visualizer::getInstance(nh);
             visualizer.visualizeCommonset(astar_.getCommonSet());
             visualizer.visualizeCommon(NodeMap::posI2D(common_point));

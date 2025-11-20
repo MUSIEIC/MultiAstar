@@ -19,7 +19,7 @@ namespace RendezvousAstar {
     public:
         static std::atomic<int32_t> version_;
 
-        enum STATE { UNUSED, INOPEN, INCLOSED, INCOMMONSET};
+        enum STATE { UNUSED, INOPEN, INCLOSED, INCOMMONSET };
         /**
          * @brief 构造函数，使用坐标和路径ID初始化节点
          * @param pathID 路径标识符

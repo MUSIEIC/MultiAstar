@@ -4,8 +4,8 @@
 #include "node.h"
 #include <Eigen/Eigen>
 #include <memory>
-#include <unordered_map>
 #include <mutex>
+#include <unordered_map>
 
 #include "voxel_map.hpp"
 #include <boost/mpl/size.hpp>

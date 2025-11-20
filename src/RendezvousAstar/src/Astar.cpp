@@ -90,8 +90,9 @@ namespace RendezvousAstar {
             ret &= node->queryID(id) && node->getState(id) == Node::STATE::INCLOSED;
         }
         if (ret) {
-            for (const auto& id : path_id_set)
+            for (const auto& id : path_id_set) {
                 node->setState(id, Node::STATE::INCOMMONSET);
+            }
         }
         return ret;
     }
@@ -103,9 +104,7 @@ namespace RendezvousAstar {
         auto& direct      = typeid(*agent) == typeid(UAV) ? direct3d_ : direct2d_;
         const auto target = typeid(*agent) == typeid(UGV) ? goal : Eigen::Vector3i(goal[0], goal[1], 0);
         auto& open_list   = agent->getOpenList(path_id);
-        // auto& closed_list  = agent->getClosedList(path_id);
-        // auto& in_open_list = agent->getInOpenList(path_id);
-        auto reach_state = STATE::searching;
+        auto reach_state  = STATE::searching;
 
         // 如果开放列表为空，说明搜索完成
         if (open_list.empty()) {
@@ -115,7 +114,7 @@ namespace RendezvousAstar {
         // 取出开放列表中f值最小的节点
         auto [f, x, y, z] = *open_list.begin();
         auto now          = nodeMap->getNode(Eigen::Vector3i(x, y, z));
-        auto begin = open_list.begin();
+        auto begin        = open_list.begin();
         open_list.erase(begin);
         // in_open_list.erase(Eigen::Vector3i(begin->at(1), begin->at(2), begin->at(3)));
         // closed_list.insert(Eigen::Vector3i(x, y, z));
@@ -125,7 +124,6 @@ namespace RendezvousAstar {
         if (isCommon(now, path_id_set)) {
             std::lock_guard<std::mutex> lock(mutex_);
             common_set_.emplace_back(now);
-
         }
         // 判断是否到达目标点
         if (now->getPos() == target) {
@@ -159,7 +157,8 @@ namespace RendezvousAstar {
                 node = std::make_shared<Node>(path_id, now, nx, ny, nz);
                 nodeMap->addNode(node);
             }
-            if (node->getState(path_id) == Node::STATE::INCLOSED||node->getState(path_id)==Node::STATE::INCOMMONSET) {
+            if (node->getState(path_id) == Node::STATE::INCLOSED
+                || node->getState(path_id) == Node::STATE::INCOMMONSET) {
                 continue;
             }
 
