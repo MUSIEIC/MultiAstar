@@ -98,11 +98,12 @@ namespace RendezvousAstar {
     }
 
     //  执行一次A*算法迭代
-    Astar::STATE Astar::runOnce(std::shared_ptr<Agent>& agent, const Eigen::Vector3i& goal,
-        const std::shared_ptr<NodeMap>& nodeMap, const int32_t path_id, const std::vector<int32_t>& path_id_set) {
+    Astar::STATE Astar::runOnce(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& goal,
+        const Eigen::Vector3i& desire_pos, const int32_t path_id, const std::vector<int32_t>& path_id_set) {
+
+        auto nodeMap =NodeMap::getInstance();
         // 根据agent类型选择2D或3D方向数组
         auto& direct      = typeid(*agent) == typeid(UAV) ? direct3d_ : direct2d_;
-        const auto target = typeid(*agent) == typeid(UGV) ? goal : Eigen::Vector3i(goal[0], goal[1], 0);
         auto& open_list   = agent->getOpenList(path_id);
         auto reach_state  = STATE::searching;
 
@@ -118,6 +119,8 @@ namespace RendezvousAstar {
         open_list.erase(begin);
         // in_open_list.erase(Eigen::Vector3i(begin->at(1), begin->at(2), begin->at(3)));
         // closed_list.insert(Eigen::Vector3i(x, y, z));
+        if (now->getState(path_id)==Node::STATE::INCLOSED||now->getState(path_id)==Node::STATE::INCOMMONSET)
+            return reach_state;
         now->setState(path_id, Node::STATE::INCLOSED);
 
         // 如果当前节点被所有目标路径访问过且在地面层，则加入公共集合
@@ -126,7 +129,7 @@ namespace RendezvousAstar {
             common_set_.emplace_back(now);
         }
         // 判断是否到达目标点
-        if (now->getPos() == target) {
+        if (now->getPos() == goal->getPos()) {
             reach_state = STATE::reached;
         }
 
@@ -143,11 +146,7 @@ namespace RendezvousAstar {
         for (auto& [dx, dy, dz, cost] : direct) {
             int nx = x + dx, ny = y + dy, nz = z + dz;
             // 如果邻居节点是障碍物或已在关闭列表中，则跳过
-            // if (nodeMap->query(Eigen::Vector3i(nx, ny, nz)) || closed_list.count(Eigen::Vector3i(nx, ny, nz))) {
-            //     // if (closed_list.count(Eigen::Vector3i(nx,ny,nz)))
-            //     continue;
-            // }
-            if (nodeMap->query(Eigen::Vector3i(nx, ny, nz))) {
+            if (NodeMap::query(Eigen::Vector3i(nx, ny, nz))) {
                 continue;
             }
 
@@ -163,20 +162,24 @@ namespace RendezvousAstar {
             }
 
             // 计算新的g值和h值
-            double ng = now->getG(path_id) + cost;
-            double nh = computeH(node->getPos(), target);
+            double ng = now->getG(path_id) + cost,nh;
+            if (now->getState(goal->getID())==Node::STATE::INCLOSED) {
+                nh=now->getG(goal->getID());
+            }
+            else
+                nh = computeH(node->getPos(), goal->getPos());
 
             // if (in_open_list.find(node->getPos()) == in_open_list.end()) {
             //     node->removePath(path_id);
             // }
-            if (node->getState(path_id) != Node::STATE::INOPEN) {
-                node->removePath(path_id);
-            }
+            // if (node->getState(path_id) != Node::STATE::INOPEN) {
+            //     node->removePath(path_id);
+            // }
 
             // 如果新路径更优，则更新节点信息
             if (ng < node->getG(path_id)) {
-                open_list.erase({node->getG(path_id) + nh, static_cast<double>(nx), static_cast<double>(ny),
-                    static_cast<double>(nz)});
+                // open_list.erase({node->getG(path_id) + node->getH(path_id), static_cast<double>(nx), static_cast<double>(ny),
+                //     static_cast<double>(nz)});
                 node->addPath(path_id, ng, nh, now);
                 node->setState(path_id, Node::STATE::INOPEN);
                 open_list.insert(
@@ -189,8 +192,8 @@ namespace RendezvousAstar {
     }
 
     // 运行完整的A*算法直到满足结束条件
-    Astar::STATE Astar::run(std::shared_ptr<Agent>& agent, const Eigen::Vector3i& target,
-        const std::shared_ptr<NodeMap>& nodeMap, const int32_t path_id, const std::vector<int32_t>& path_id_set,
+    Astar::STATE Astar::run(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target,
+        const Eigen::Vector3i& desire_pos, const int32_t path_id, const std::vector<int32_t>& path_id_set,
         const std::function<bool(STATE&)>& end_condition) {
 
         // 初始化
@@ -210,7 +213,7 @@ namespace RendezvousAstar {
         uint32_t cnt = 0;
         while (!end_condition(state_now)) {
             ++cnt;
-            state_now     = runOnce(agent, target, nodeMap, path_id, path_id_set);
+            state_now     = runOnce(agent, target, desire_pos, path_id, path_id_set);
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::high_resolution_clock::now() - begin_time);
 

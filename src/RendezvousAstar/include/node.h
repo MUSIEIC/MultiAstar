@@ -110,6 +110,8 @@ namespace RendezvousAstar {
 
         bool queryID(int32_t id) const;
 
+        std::unordered_set<int32_t> getPathSet() const;
+
     private:
         // 节点的三维坐标位置
         const Eigen::Vector3i node_pos_;

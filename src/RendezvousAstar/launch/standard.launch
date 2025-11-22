@@ -6,7 +6,7 @@
     </node>
 
     <node pkg="mockamap" type="mockamap_node" name="mockamap_node" output="screen">
-        <param name="seed" type="int" value="1024"/>
+        <param name="seed" type="int" value="512"/>
         <param name="update_freq" type="double" value="1.0"/>
         <param name="resolution" type="double" value="0.5"/>
         <param name="x_length" type="int" value="50"/>

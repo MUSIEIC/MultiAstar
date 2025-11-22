@@ -133,6 +133,9 @@ namespace RendezvousAstar {
         std::lock_guard<std::mutex> lock(mutex_);
         return path_id_.find(id) != path_id_.end() && path_version_.at(id) == version_;
     }
+    std::unordered_set<int32_t> Node::getPathSet() const {
+        return path_id_;
+    }
 
 
 } // namespace RendezvousAstar

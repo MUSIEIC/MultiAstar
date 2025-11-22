@@ -115,6 +115,7 @@ namespace RendezvousAstar {
         node->addPath(id, 0, 0, nullptr);
         open_list_.insert(std::array<double, 4>{
             0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
+        node->setState(id,Node::STATE::INOPEN);
     }
 
 
@@ -189,6 +190,7 @@ namespace RendezvousAstar {
         ;
         open_list_[id].insert(std::array<double, 4>{
             0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
+        node->setState(id,Node::STATE::INOPEN);
     }
 
 

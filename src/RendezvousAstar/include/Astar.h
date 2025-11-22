@@ -36,25 +36,25 @@ namespace RendezvousAstar {
          * @brief 执行一次A*算法迭代
          * @param agent 智能体指针
          * @param target 目标点坐标
-         * @param nodeMap 节点地图指针
+         * @param desire_pos
          * @param path_id 路径ID
          * @param path_id_set commontset判定id集合
          * @return 当前搜索状态
          */
-        STATE runOnce(std::shared_ptr<Agent>& agent, const Eigen::Vector3i& target,
-            const std::shared_ptr<NodeMap>& nodeMap, int32_t path_id, const std::vector<int32_t>& path_id_set);
+        STATE runOnce(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target, const Eigen::Vector3i& desire_pos,
+            int32_t path_id, const std::vector<int32_t>& path_id_set);
 
         /**
          * @brief 运行完整的A*算法
          * @param agent 智能体指针
          * @param target 目标点坐标
-         * @param nodeMap 节点地图指针
+         * @param deirse_pos
          * @param path_id 路径ID
          * @param path_id_set commontset判定id集合
          * @param end_condition 终止条件
          * @return 最终搜索状态
          */
-        STATE run(std::shared_ptr<Agent>& agent, const Eigen::Vector3i& target, const std::shared_ptr<NodeMap>& nodeMap,
+        STATE run(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target, const Eigen::Vector3i& deirse_pos,
             int32_t path_id, const std::vector<int32_t>& path_id_set, const std::function<bool(STATE&)>& end_condition);
 
         /**
@@ -113,7 +113,7 @@ namespace RendezvousAstar {
 
         void addThresholdOneStep() {
             std::lock_guard<std::mutex> lock(mutex_);
-            threshold_ += step_;
+            threshold_ += threshold_/2;
         }
 
         auto& getCommonSet() {

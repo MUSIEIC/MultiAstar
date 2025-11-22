@@ -7,12 +7,14 @@ namespace RendezvousAstar {
     using AgentPtr = std::shared_ptr<Agent>;
 
     void plan(const Eigen::Vector3d& spos, const Eigen::Vector3d& epos, ros::NodeHandle& nh) {
+        Node::version_.fetch_add(1);
         Astar astar;
         auto sposi     = NodeMap::posD2I(spos);
         auto eposi     = NodeMap::posD2I(epos);
         AgentPtr agent = std::make_shared<UAV>(1, spos, sposi);
+        AgentPtr eagent = std::make_shared<UGV>(-1, epos, eposi);
         auto begin     = std::chrono::high_resolution_clock::now();
-        auto state     = astar.run(agent, eposi, NodeMap::getInstance(), 1, {1}, [](const Astar::STATE& state) {
+        auto state     = astar.run(agent, eagent, eposi, 1, {1}, [](const Astar::STATE& state) {
             return state == Astar::STATE::reached || state == Astar::STATE::reached_and_common;
         });
         auto end       = std::chrono::high_resolution_clock::now();
@@ -22,6 +24,7 @@ namespace RendezvousAstar {
         const auto path = Astar::getRealPath(1, sposi, eposi, NodeMap::getInstance());
         ROS_INFO("PathSearch: Astar state: %d,path size: %lu", state, path.size());
         Visualizer::getInstance(nh).visualizePath(path);
+        // Visualizer::getInstance(nh).visualizeCommonset(astar.getCommonSet());
     }
 } // namespace RendezvousAstar
 
