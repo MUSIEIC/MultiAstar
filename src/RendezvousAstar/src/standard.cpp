@@ -9,15 +9,15 @@ namespace RendezvousAstar {
     void plan(const Eigen::Vector3d& spos, const Eigen::Vector3d& epos, ros::NodeHandle& nh) {
         Node::version_.fetch_add(1);
         Astar astar;
-        auto sposi     = NodeMap::posD2I(spos);
-        auto eposi     = NodeMap::posD2I(epos);
-        AgentPtr agent = std::make_shared<UAV>(1, spos, sposi);
+        auto sposi      = NodeMap::posD2I(spos);
+        auto eposi      = NodeMap::posD2I(epos);
+        AgentPtr agent  = std::make_shared<UAV>(1, spos, sposi);
         AgentPtr eagent = std::make_shared<UGV>(-1, epos, eposi);
-        auto begin     = std::chrono::high_resolution_clock::now();
-        auto state     = astar.run(agent, eagent, eposi, 1, {1}, [](const Astar::STATE& state) {
+        auto begin      = std::chrono::high_resolution_clock::now();
+        auto state      = astar.run(agent, eagent, eposi, 1, {1}, [](const Astar::STATE& state) {
             return state == Astar::STATE::reached || state == Astar::STATE::reached_and_common;
         });
-        auto end       = std::chrono::high_resolution_clock::now();
+        auto end        = std::chrono::high_resolution_clock::now();
 
         ROS_INFO("PathSearch: node num: %lu ------ time: %ld ms", NodeMap::getInstance()->getNodeNum(),
             std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());

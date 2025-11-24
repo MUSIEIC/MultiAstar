@@ -101,11 +101,17 @@ namespace RendezvousAstar {
     Astar::STATE Astar::runOnce(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& goal,
         const Eigen::Vector3i& desire_pos, const int32_t path_id, const std::vector<int32_t>& path_id_set) {
 
-        auto nodeMap =NodeMap::getInstance();
+        auto nodeMap = NodeMap::getInstance();
         // 根据agent类型选择2D或3D方向数组
-        auto& direct      = typeid(*agent) == typeid(UAV) ? direct3d_ : direct2d_;
-        auto& open_list   = agent->getOpenList(path_id);
-        auto reach_state  = STATE::searching;
+        auto& direct = typeid(*agent) == typeid(UAV) ? direct3d_ : direct2d_;
+
+        auto target = goal->getPos();
+        if (typeid(*agent) == typeid(UGV)) {
+            target.z() = 0;
+        }
+
+        auto& open_list  = agent->getOpenList(path_id);
+        auto reach_state = STATE::searching;
 
         // 如果开放列表为空，说明搜索完成
         if (open_list.empty()) {
@@ -117,10 +123,10 @@ namespace RendezvousAstar {
         auto now          = nodeMap->getNode(Eigen::Vector3i(x, y, z));
         auto begin        = open_list.begin();
         open_list.erase(begin);
-        // in_open_list.erase(Eigen::Vector3i(begin->at(1), begin->at(2), begin->at(3)));
-        // closed_list.insert(Eigen::Vector3i(x, y, z));
-        if (now->getState(path_id)==Node::STATE::INCLOSED||now->getState(path_id)==Node::STATE::INCOMMONSET)
+
+        if (now->getState(path_id) == Node::STATE::INCLOSED || now->getState(path_id) == Node::STATE::INCOMMONSET) {
             return reach_state;
+        }
         now->setState(path_id, Node::STATE::INCLOSED);
 
         // 如果当前节点被所有目标路径访问过且在地面层，则加入公共集合
@@ -129,7 +135,7 @@ namespace RendezvousAstar {
             common_set_.emplace_back(now);
         }
         // 判断是否到达目标点
-        if (now->getPos() == goal->getPos()) {
+        if (now->getPos() == target) {
             reach_state = STATE::reached;
         }
 
@@ -162,29 +168,21 @@ namespace RendezvousAstar {
             }
 
             // 计算新的g值和h值
-            double ng = now->getG(path_id) + cost,nh;
-            if (now->getState(goal->getID())==Node::STATE::INCLOSED) {
-                nh=now->getG(goal->getID());
-            }
-            else
+            double ng = now->getG(path_id) + cost, nh;
+            if (now->getState(goal->getID()) == Node::STATE::INCLOSED) {
+                nh = now->getG(goal->getID());
+            } else {
                 nh = computeH(node->getPos(), goal->getPos());
+            }
 
-            // if (in_open_list.find(node->getPos()) == in_open_list.end()) {
-            //     node->removePath(path_id);
-            // }
-            // if (node->getState(path_id) != Node::STATE::INOPEN) {
-            //     node->removePath(path_id);
-            // }
 
             // 如果新路径更优，则更新节点信息
             if (ng < node->getG(path_id)) {
-                // open_list.erase({node->getG(path_id) + node->getH(path_id), static_cast<double>(nx), static_cast<double>(ny),
-                //     static_cast<double>(nz)});
+
                 node->addPath(path_id, ng, nh, now);
                 node->setState(path_id, Node::STATE::INOPEN);
                 open_list.insert(
                     {1.02 * nh + ng, static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz)});
-                // in_open_list.insert(node->getPos());
             }
         }
 
@@ -201,12 +199,6 @@ namespace RendezvousAstar {
         auto begin_time = std::chrono::high_resolution_clock::now();
 
         // agent初始化
-        // agent->getOpenList(path_id).clear();
-        // agent->getInOpenList(path_id).clear();
-        // agent->getOpenList(path_id).insert(std::array<double, 4>{0.0, static_cast<double>(agent->getPos()[0]),
-        //     static_cast<double>(agent->getPos()[1]), static_cast<double>(agent->getPos()[2])});
-        // agent->getInOpenList(path_id).insert(agent->getPos());
-        // agent->getClosedList(path_id).clear();
         agent->reset(path_id);
 
         // 循环执行A*算法直到满足结束条件或超时

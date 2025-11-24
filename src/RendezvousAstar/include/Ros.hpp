@@ -52,7 +52,8 @@ namespace RendezvousAstar {
             targetSub_ = nh.subscribe(
                 config_.targetTopic, 1, &PathSearch::targetCallBack, this, ros::TransportHints().tcpNoDelay());
 
-            pointSub_=nh.subscribe("/initialpose",1,&PathSearch::pointCallBack,this,ros::TransportHints().tcpNoDelay());
+            pointSub_ =
+                nh.subscribe("/initialpose", 1, &PathSearch::pointCallBack, this, ros::TransportHints().tcpNoDelay());
         }
 
         void mapCallBack(const sensor_msgs::PointCloud2::ConstPtr& msg) {
@@ -100,23 +101,26 @@ namespace RendezvousAstar {
         }
 
         void pointCallBack(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg) const {
-            const auto point=Eigen::Vector3d(msg->pose.pose.position.x,msg->pose.pose.position.y,msg->pose.pose.position.z);
-            const Eigen::Vector3i p=NodeMap::posD2I(point);
-            std::unordered_map<int32_t,std::string> state={{0,"UNUSED"},{1,"INOPEN"},{2,"INCLOSE"},{3,"INCOMMONSET"}};
+            const auto point =
+                Eigen::Vector3d(msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
+            const Eigen::Vector3i p                        = NodeMap::posD2I(point);
+            std::unordered_map<int32_t, std::string> state = {
+                {0, "UNUSED"}, {1, "INOPEN"}, {2, "INCLOSE"}, {3, "INCOMMONSET"}};
 
             if (NodeMap::query(p)) {
                 ROS_INFO("pointCallBack: 该位置为障碍物 \n");
                 return;
             }
 
-            const auto node=node_map_->getNode(p);
+            const auto node = node_map_->getNode(p);
             if (!node) {
                 ROS_INFO("pointCallBack: 该点未创建node \n");
                 return;
             }
             ROS_INFO("pointCallBack: State: \n");
-            for (const auto &s:node->getPathSet()) {
-                ROS_INFO("pos: [%d,%d,%d] pathID: %d, State: %s",node->getPos().x(),node->getPos().y(),node->getPos().z(), s,state[node->getState(s)].c_str());
+            for (const auto& s : node->getPathSet()) {
+                ROS_INFO("pos: [%d,%d,%d] pathID: %d, State: %s", node->getPos().x(), node->getPos().y(),
+                    node->getPos().z(), s, state[node->getState(s)].c_str());
             }
         }
 
