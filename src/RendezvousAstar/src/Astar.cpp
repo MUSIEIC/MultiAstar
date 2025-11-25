@@ -2,24 +2,30 @@
 
 namespace RendezvousAstar {
 
+    constexpr double sqrt2() {
+        return std::sqrt(2);
+    }
+    constexpr double sqrt3() {
+        return std::sqrt(3);
+    }
 
-    std::vector<std::array<double, 4>> Astar::direct3d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
-        {{0.0, 0.0, 1.0, 1.0}}, {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{0.0, 0.0, -1.0, 1.0}},
-        {{1.0, 1.0, 0.0, std::sqrt(2)}}, {{1.0, 0.0, 1.0, std::sqrt(2)}}, {{0.0, 1.0, 1.0, std::sqrt(2)}},
-        {{-1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 0.0, -1.0, std::sqrt(2)}}, {{0.0, -1.0, -1.0, std::sqrt(2)}},
-        {{1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 1.0, 0.0, std::sqrt(2)}}, {{1.0, 0.0, -1.0, std::sqrt(2)}},
-        {{-1.0, 0.0, 1.0, std::sqrt(2)}}, {{0.0, 1.0, -1.0, std::sqrt(2)}}, {{0.0, -1.0, 1.0, std::sqrt(2)}},
-        {{1.0, 1.0, 1.0, std::sqrt(3)}}, {{-1.0, -1.0, -1.0, std::sqrt(3)}}, {{1.0, 1.0, -1.0, std::sqrt(3)}},
-        {{1.0, -1.0, 1.0, std::sqrt(3)}}, {{-1.0, 1.0, 1.0, std::sqrt(3)}}, {{-1.0, -1.0, 1.0, std::sqrt(3)}},
-        {{-1.0, 1.0, -1.0, std::sqrt(3)}}, {{1.0, -1.0, -1.0, std::sqrt(3)}}}};
+    std::vector<std::array<double, 4>> Astar::direct3d_ = {
+        {{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}}, {{0.0, 0.0, 1.0, 1.0}}, {{-1.0, 0.0, 0.0, 1.0}},
+            {{0.0, -1.0, 0.0, 1.0}}, {{0.0, 0.0, -1.0, 1.0}}, {{1.0, 1.0, 0.0, sqrt2()}}, {{1.0, 0.0, 1.0, sqrt2()}},
+            {{0.0, 1.0, 1.0, sqrt2()}}, {{-1.0, -1.0, 0.0, sqrt2()}}, {{-1.0, 0.0, -1.0, sqrt2()}},
+            {{0.0, -1.0, -1.0, sqrt2()}}, {{1.0, -1.0, 0.0, sqrt2()}}, {{-1.0, 1.0, 0.0, sqrt2()}},
+            {{1.0, 0.0, -1.0, sqrt2()}}, {{-1.0, 0.0, 1.0, sqrt2()}}, {{0.0, 1.0, -1.0, sqrt2()}},
+            {{0.0, -1.0, 1.0, sqrt2()}}, {{1.0, 1.0, 1.0, sqrt3()}}, {{-1.0, -1.0, -1.0, sqrt3()}},
+            {{1.0, 1.0, -1.0, sqrt3()}}, {{1.0, -1.0, 1.0, sqrt3()}}, {{-1.0, 1.0, 1.0, sqrt3()}},
+            {{-1.0, -1.0, 1.0, sqrt3()}}, {{-1.0, 1.0, -1.0, sqrt3()}}, {{1.0, -1.0, -1.0, sqrt3()}}}};
 
     std::vector<std::array<double, 4>> Astar::direct2d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
-        {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{1.0, 1.0, 0.0, std::sqrt(2)}},
-        {{1.0, -1.0, 0.0, std::sqrt(2)}}, {{-1.0, 1.0, 0.0, std::sqrt(2)}}, {{-1.0, -1.0, 0.0, std::sqrt(2)}}}};
+        {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{1.0, 1.0, 0.0, sqrt2()}}, {{1.0, -1.0, 0.0, sqrt2()}},
+        {{-1.0, 1.0, 0.0, sqrt2()}}, {{-1.0, -1.0, 0.0, sqrt2()}}}};
 
     // 设置阈值，用于控制公共节点数量的上限
     void Astar::setThreshold(const int32_t threshold) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         threshold_ = threshold;
     }
 
@@ -74,11 +80,6 @@ namespace RendezvousAstar {
         return path;
     }
 
-    // 获取公共节点集合的大小
-    size_t Astar::getCommonNum() const {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return common_set_.size();
-    }
 
     bool Astar::isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set) {
         if (path_id_set.empty()) {
@@ -131,8 +132,7 @@ namespace RendezvousAstar {
 
         // 如果当前节点被所有目标路径访问过且在地面层，则加入公共集合
         if (isCommon(now, path_id_set)) {
-            std::lock_guard<std::mutex> lock(mutex_);
-            common_set_.emplace_back(now);
+            insertCommonSet(now);
         }
         // 判断是否到达目标点
         if (now->getPos() == target) {

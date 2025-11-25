@@ -3,7 +3,7 @@
 namespace RendezvousAstar {
 
     /// 初始化体素地图
-    std::mutex NodeMap::mutex_;
+    std::shared_mutex NodeMap::mutex_;
     std::shared_ptr<voxel_map::VoxelMap> NodeMap::voxel_map_;
 
     bool NodeMap::voxel_map_init = false;
@@ -15,7 +15,7 @@ namespace RendezvousAstar {
      * @return 节点的共享指针，如果不存在则返回nullptr
      */
     std::shared_ptr<Node> NodeMap::getNode(const Eigen::Vector3i& pos) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         auto it = node_set_.find(pos);
         if (it != node_set_.end()) {
             return it->second;
@@ -35,20 +35,13 @@ namespace RendezvousAstar {
         return getNode(Eigen::Vector3i(x, y, z));
     }
 
-    /**
-     * @brief 获取体素地图
-     * @return 体素地图的共享指针
-     */
-    std::shared_ptr<voxel_map::VoxelMap>& NodeMap::getVoxelMap() {
-        return voxel_map_;
-    }
 
     /**
      * @brief 获取节点数量
      * @return 节点集合的大小
      */
     size_t NodeMap::getNodeNum() const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         return node_set_.size();
     }
 
@@ -71,7 +64,7 @@ namespace RendezvousAstar {
         }
     }
     void NodeMap::clear() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         node_set_.clear();
     }
     /**
@@ -79,7 +72,7 @@ namespace RendezvousAstar {
      * @param node 要添加的节点
      */
     void NodeMap::addNode(const std::shared_ptr<Node>& node) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         if (node_set_.find(node->getPos()) != node_set_.end()) {
             ROS_WARN("该节点已在NodeMap中，不执行操作");
             return;
@@ -93,7 +86,7 @@ namespace RendezvousAstar {
      * @return 如果被占据返回true，否则返回false
      */
     bool NodeMap::query(const Eigen::Vector3d& pos) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         return voxel_map_->query(pos);
     }
 
@@ -103,7 +96,7 @@ namespace RendezvousAstar {
      * @return 如果被占据返回true，否则返回false
      */
     bool NodeMap::query(const Eigen::Vector3i& pos) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         return voxel_map_->query(pos);
     }
 
@@ -113,7 +106,6 @@ namespace RendezvousAstar {
      * @return 对应的浮点坐标
      */
     Eigen::Vector3d NodeMap::posI2D(const Eigen::Vector3i& id) {
-        std::lock_guard<std::mutex> lock(mutex_);
         return voxel_map_->posI2D(id);
     }
 
@@ -123,8 +115,15 @@ namespace RendezvousAstar {
      * @return 对应的整数坐标
      */
     Eigen::Vector3i NodeMap::posD2I(const Eigen::Vector3d& pos) {
-        std::lock_guard<std::mutex> lock(mutex_);
         return voxel_map_->posD2I(pos);
+    }
+
+    void NodeMap::setOccupied(Eigen::Vector3d pos) {
+        voxel_map_->setOccupied(pos);
+    }
+
+    void NodeMap::dilate(const int& r) {
+        voxel_map_->dilate(r);
     }
 
 

@@ -21,7 +21,7 @@ namespace RendezvousAstar {
 
     bool Node::addPath(const int32_t pathID, const double g, const double h, const std::shared_ptr<Node>& parent) {
 
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         path_id_.insert(pathID);
         path_version_[pathID] = version_;
         g_[pathID]            = g;
@@ -31,16 +31,16 @@ namespace RendezvousAstar {
     }
 
     void Node::removePath(const int32_t path_id) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         path_id_.erase(path_id);
     }
     void Node::clearPath() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         path_id_.clear();
     }
 
     bool Node::setG(const int32_t pathID, const double g) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end()) {
             ROS_ERROR("Node setG: 该路径不存在");
             return false;
@@ -50,7 +50,7 @@ namespace RendezvousAstar {
     }
 
     bool Node::setH(const int32_t pathID, const double h) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end()) {
             ROS_ERROR("Node setH: 该路径不存在");
             return false;
@@ -60,7 +60,7 @@ namespace RendezvousAstar {
     }
 
     bool Node::setParent(const int32_t pathID, const std::shared_ptr<Node>& parent) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end()) {
             ROS_ERROR("Node setParent: 该路径不存在");
             return false;
@@ -70,7 +70,7 @@ namespace RendezvousAstar {
     }
 
     bool Node::setState(const int32_t pathID, const STATE state) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end()) {
             ROS_WARN("Node::setState:  路径id不在节点中");
             return false;
@@ -80,7 +80,7 @@ namespace RendezvousAstar {
     }
 
     double Node::getG(const int32_t pathID) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end() || path_version_.at(pathID) != version_) {
             return INT32_MAX;
         }
@@ -88,7 +88,7 @@ namespace RendezvousAstar {
     }
 
     Node::STATE Node::getState(int32_t pathID) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end() || path_version_.at(pathID) != version_) {
             return UNUSED;
         }
@@ -96,7 +96,7 @@ namespace RendezvousAstar {
     }
 
     int32_t Node::getPathVersion(int32_t pathID) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end()) {
             return -1;
         }
@@ -104,7 +104,7 @@ namespace RendezvousAstar {
     }
 
     double Node::getH(const int32_t pathID) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end() || path_version_.at(pathID) != version_) {
             ROS_ERROR("Node getH: 该路径不存在");
             return INT32_MAX;
@@ -113,7 +113,7 @@ namespace RendezvousAstar {
     }
 
     std::shared_ptr<Node> Node::getParent(const int32_t pathID) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         if (path_id_.find(pathID) == path_id_.end() || path_version_.at(pathID) != version_) {
             ROS_ERROR("Node getParent: 该路径不存在");
             return nullptr;
@@ -122,18 +122,21 @@ namespace RendezvousAstar {
     }
 
     Eigen::Vector3i Node::getPos() const {
+        std::shared_lock lock(mutex_);
         return node_pos_;
     }
 
     int32_t Node::getPathCount() const {
+        std::shared_lock lock(mutex_);
         return static_cast<int32_t>(path_id_.size());
     }
 
     bool Node::queryID(const int32_t id) const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::shared_lock lock(mutex_);
         return path_id_.find(id) != path_id_.end() && path_version_.at(id) == version_;
     }
     std::unordered_set<int32_t> Node::getPathSet() const {
+        std::shared_lock lock(mutex_);
         return path_id_;
     }
 

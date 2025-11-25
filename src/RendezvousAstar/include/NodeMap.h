@@ -4,7 +4,6 @@
 #include "node.h"
 #include <Eigen/Eigen>
 #include <memory>
-#include <mutex>
 #include <unordered_map>
 
 #include "voxel_map.hpp"
@@ -58,7 +57,7 @@ namespace RendezvousAstar {
         static bool voxel_map_init; ///< 体素地图是否初始化标志
         static std::shared_ptr<voxel_map::VoxelMap> voxel_map_; ///< 体素地图指针
         std::unordered_map<Eigen::Vector3i, std::shared_ptr<Node>, NodeHash, NodeEqual> node_set_; ///< 节点集合
-        static std::mutex mutex_;
+        static std::shared_mutex mutex_;
 
     public:
         /**
@@ -104,11 +103,6 @@ namespace RendezvousAstar {
          */
         std::shared_ptr<Node> getNode(const Eigen::Vector3i& pos) const;
 
-        /**
-         * @brief 获取体素地图
-         * @return 体素地图的共享指针
-         */
-        static std::shared_ptr<voxel_map::VoxelMap>& getVoxelMap();
 
         /**
          * @brief 获取节点数量
@@ -159,6 +153,10 @@ namespace RendezvousAstar {
          * @return 对应的整数坐标
          */
         static Eigen::Vector3i posD2I(const Eigen::Vector3d& pos);
+
+        static void setOccupied(Eigen::Vector3d pos);
+
+        static void dilate(const int &r);
     };
 
 } // namespace RendezvousAstar

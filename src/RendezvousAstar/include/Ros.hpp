@@ -24,6 +24,7 @@ namespace RendezvousAstar {
         double dilateRadius{};
         double voxelWidth{};
         std::vector<double> mapBound;
+        bool multiThread;
 
         explicit Config(const ros::NodeHandle& nh_) {
             nh_.getParam("MapTopic", mapTopic);
@@ -31,6 +32,7 @@ namespace RendezvousAstar {
             nh_.getParam("DilateRadius", dilateRadius);
             nh_.getParam("VoxelWidth", voxelWidth);
             nh_.getParam("MapBound", mapBound);
+            nh_.getParam("multithreading", multiThread);
         }
     };
 
@@ -68,11 +70,11 @@ namespace RendezvousAstar {
                         || std::isinf(fdata[cur + 1]) || std::isnan(fdata[cur + 2]) || std::isinf(fdata[cur + 2])) {
                         continue;
                     }
-                    NodeMap::getVoxelMap()->setOccupied(
+                    NodeMap::setOccupied(
                         Eigen::Vector3d(fdata[cur + 0], fdata[cur + 1], fdata[cur + 2]));
                 }
 
-                NodeMap::getVoxelMap()->dilate(std::ceil(config_.dilateRadius / NodeMap::getVoxelMap()->getScale()));
+                NodeMap::dilate(std::ceil(config_.dilateRadius / config_.voxelWidth));
 
                 mapOccupiedInited = true;
             }
@@ -88,7 +90,7 @@ namespace RendezvousAstar {
                                          * (config_.mapBound[5] - config_.mapBound[4] - 2 * config_.dilateRadius);
                 const Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, zGoal);
                 // const Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
-                if (NodeMap::getVoxelMap()->query(goal) == 0) {
+                if (NodeMap::query(goal) == 0) {
                     Visualizer::getInstance(nh_).visualizeStartGoal(goal, 0.25, startgoal_.size());
                     startgoal_.emplace_back(goal);
                 } else {

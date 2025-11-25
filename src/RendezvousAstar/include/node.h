@@ -3,7 +3,7 @@
 
 #include <Eigen/Eigen>
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 #include <unordered_set>
 namespace RendezvousAstar {
@@ -128,7 +128,7 @@ namespace RendezvousAstar {
         std::unordered_map<int32_t, int32_t> path_version_;
         // pathID对应的父节点
         std::unordered_map<int32_t, std::weak_ptr<Node>> parent_;
-        mutable std::mutex mutex_;
+        mutable std::shared_mutex mutex_;
     };
 
 } // namespace RendezvousAstar

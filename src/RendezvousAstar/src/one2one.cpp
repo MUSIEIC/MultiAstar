@@ -1,4 +1,5 @@
 #include "Astar.h"
+#include <future>
 #include <queue>
 #include <ros/ros.h>
 #include <thread>
@@ -28,41 +29,34 @@ namespace RendezvousAstar {
             }
             return true;
         }
-
-        std::shared_ptr<Node> getPriorityNode(std::vector<std::shared_ptr<Node>>& node_set) {
-
-            auto compare = [this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2) {
-                double power        = 0.7;
-                double vf           = 0.5 * power * power + 0.001;
-                double vc           = 0.3;
-                double hover_weight = 1.0, move_weight = 1.5;
-                double gf1 = 0.0, gc1 = 0.0;
-                double gf2 = 0.0, gc2 = 0.0;
-                for (const auto& id : path_id_set_) {
-                    if (id < 0) {
-                        gc1 += n1->getG(id);
-                        gc2 += n2->getG(id);
-                    } else {
-                        gf1 += n1->getG(id);
-                        gf2 += n2->getG(id);
-                    }
+        static bool Compare(
+            const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2, const std::vector<int32_t>& path_id_set) {
+            double power        = 0.7;
+            double vf           = 0.5 * power * power + 0.001;
+            double vc           = 0.3;
+            double hover_weight = 1.0, move_weight = 1.5;
+            double gf1 = 0.0, gc1 = 0.0;
+            double gf2 = 0.0, gc2 = 0.0;
+            for (const auto& id : path_id_set) {
+                if (id < 0) {
+                    gc1 += n1->getG(id);
+                    gc2 += n2->getG(id);
+                } else {
+                    gf1 += n1->getG(id);
+                    gf2 += n2->getG(id);
                 }
+            }
 
-                const double hover_time1 = abs(1.0 * gf1 / vf - 1.0 * gc1 / vc);
-                const double hover_time2 = abs(1.0 * gf2 / vf - 1.0 * gc2 / vc);
+            const double hover_time1 = abs(1.0 * gf1 / vf - 1.0 * gc1 / vc);
+            const double hover_time2 = abs(1.0 * gf2 / vf - 1.0 * gc2 / vc);
 
-                const double moving_time1 = gf1 / vf;
-                const double moving_time2 = gf2 / vf;
+            const double moving_time1 = gf1 / vf;
+            const double moving_time2 = gf2 / vf;
 
-                const double p1 = hover_weight * hover_time1 + move_weight * moving_time1 + gc1 + gf1;
-                const double p2 = hover_weight * hover_time2 + move_weight * moving_time2 + gc2 + gf2;
+            const double p1 = hover_weight * hover_time1 + move_weight * moving_time1 + gc1 + gf1;
+            const double p2 = hover_weight * hover_time2 + move_weight * moving_time2 + gc2 + gf2;
 
-                return p1 < p2;
-            };
-
-
-            sort(node_set.begin(), node_set.end(), compare);
-            return *node_set.begin();
+            return p1 < p2;
         }
 
         void plan(const Eigen::Vector3d& uav_pos, const Eigen::Vector3d& ugv_pos, ros::NodeHandle& nh) {
@@ -97,7 +91,10 @@ namespace RendezvousAstar {
                 }
                 state_uav = astar_.runOnce(uav_, ugv_, ugv_->getPos(), uav_->getID(), path_id_set_);
                 if (endCondition(state_ugv) || endCondition(state_uav)) {
-                    rendezvous_node = getPriorityNode(astar_.getCommonSet());
+                    rendezvous_node =
+                        astar_.sortCommonSet([this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2) {
+                            return Compare(n1, n2, path_id_set_);
+                        });
                     if (state_uav == Astar::STATE::reached || RendezvousCheck(rendezvous_node->getPos())) {
                         break;
                     }
@@ -137,12 +134,17 @@ namespace RendezvousAstar {
         }
 
 
-        // 多线程验证，说明功能库线程安全（agent不安全，但每个agent只在一个线程中）
+        // 多线程版本
         void planMultiThread(const Eigen::Vector3d& uav_pos, const Eigen::Vector3d& ugv_pos, ros::NodeHandle& nh) {
             auto uav_pos_i = NodeMap::posD2I(uav_pos);
             auto ugv_pos_i = NodeMap::posD2I(ugv_pos);
+            std::promise<std::shared_ptr<Node>> rendezvous_promise;
+            std::future<std::shared_ptr<Node>> rendezvous_future;
+            rendezvous_future = rendezvous_promise.get_future();
 
             //--------------init----------------------------------------------------------
+            stop_.store(false);
+            bool getRendezvous{false};
             Node::version_.fetch_add(1);
             astar_.resetCommonSet();
             astar_.setThreshold(60);
@@ -157,34 +159,88 @@ namespace RendezvousAstar {
             //----------------搜索--------------------------------------------------------------------------
             const auto time_begin = std::chrono::high_resolution_clock::now();
 
-            std::thread ugv_plan([&]() {
+            std::thread ugv_plan([this, &uav_pos_i]() {
                 ROS_INFO("ugv thread");
                 const auto state_ugv =
-                    astar_.run(ugv_, uav_, uav_pos_i, ugv_->getID(), path_id_set_, [](const Astar::STATE& ugv) {
-                        return endCondition(ugv) || ugv == Astar::STATE::reached
-                            || ugv == Astar::STATE::map_search_done;
+                    astar_.run(ugv_, uav_, uav_pos_i, ugv_->getID(), path_id_set_, [this](const Astar::STATE& ugv) {
+                        return stop_.load() || ugv == Astar::STATE::reached || ugv == Astar::STATE::map_search_done
+                            || ugv == Astar::STATE::over_time;
                     });
                 ROS_INFO("UGV state: %d", state_ugv);
             });
 
-            std::thread uav_plan([&]() {
+            std::thread uav_plan([this, &ugv_pos_i]() {
                 ROS_INFO("uav thread");
-                const auto state_uav = astar_.run(uav_, ugv_, ugv_pos_i, uav_->getID(), path_id_set_,
-                    [](const Astar::STATE& uav) { return endCondition(uav) || uav == Astar::STATE::map_search_done; });
+                const auto state_uav =
+                    astar_.run(uav_, ugv_, ugv_pos_i, uav_->getID(), path_id_set_, [this](const Astar::STATE& uav) {
+                        return stop_.load() || uav == Astar::STATE::map_search_done || uav == Astar::STATE::over_time;
+                    });
+                if (state_uav == Astar::STATE::map_search_done) {
+                    stop_.store(true);
+                }
                 ROS_INFO("UAV state: %d", state_uav);
+            });
+
+
+            std::thread monitor([this, &rendezvous_promise, &getRendezvous]() {
+                while (!stop_.load()) {
+                    std::vector<std::shared_ptr<Node>> snapshot;
+                    {
+                        std::shared_lock lock(mutex_);
+                        snapshot = astar_.getCommonSet();
+                    }
+
+                    if (!snapshot.empty()) {
+                        sort(snapshot.begin(), snapshot.end(),
+                            [this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2) {
+                                return Compare(n1, n2, path_id_set_);
+                            });
+                        const auto node = snapshot.front();
+                        if (RendezvousCheck(node->getPos())) {
+                            rendezvous_promise.set_value(node);
+                            getRendezvous = true;
+                            stop_.store(true);
+                        } else {
+                            astar_.addThresholdOneStep();
+                        }
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                }
             });
 
             uav_plan.join();
             ugv_plan.join();
-            // ROS_INFO("UAV state: %d,UGV state: %d", state_uav, state_ugv);
-            ROS_INFO("commonSet size: %lu", astar_.getCommonNum());
+            monitor.join();
+
             const auto time_end = std::chrono::high_resolution_clock::now();
+            Eigen::Vector3i rendezvous_node;
+            ROS_INFO("commonSet size: %lu", astar_.getCommonNum());
             ROS_INFO("one2one time: %ld",
                 std::chrono::duration_cast<std::chrono::microseconds>(time_end - time_begin).count() / 1000);
 
-            auto common_point = getPriorityNode(astar_.getCommonSet())->getPos();
-            const auto path1  = Astar::getRealPath(uav_->getID(), uav_->getPos(), common_point, NodeMap::getInstance());
-            const auto path2  = Astar::getRealPath(ugv_->getID(), ugv_->getPos(), common_point, NodeMap::getInstance());
+            if (getRendezvous) {
+                try {
+                    ROS_INFO("获取汇合点");
+                    rendezvous_node = rendezvous_future.get()->getPos();
+                } catch (const std::future_error& e) {
+                    ROS_WARN("路径生成失败，未得到汇合点 %s", e.what());
+                    return;
+                }
+            } else {
+                ROS_WARN("路径生成失败，未得到汇合点");
+                return;
+            }
+
+            // auto rendezvous_node =
+            //     astar_
+            //         .sortCommonSet([this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2) {
+            //             return compare(n1, n2, path_id_set_);
+            //         })
+            //         ->getPos();
+            const auto path1 =
+                Astar::getRealPath(uav_->getID(), uav_->getPos(), rendezvous_node, NodeMap::getInstance());
+            const auto path2 =
+                Astar::getRealPath(ugv_->getID(), ugv_->getPos(), rendezvous_node, NodeMap::getInstance());
 
             // 合并路径
             auto merged_path = path1;
@@ -195,7 +251,7 @@ namespace RendezvousAstar {
 
             Visualizer& visualizer = Visualizer::getInstance(nh);
             visualizer.visualizeCommonset(astar_.getCommonSet());
-            visualizer.visualizeCommon(NodeMap::posI2D(common_point));
+            visualizer.visualizeCommon(NodeMap::posI2D(rendezvous_node));
             visualizer.visualizePath(merged_path);
         }
 
@@ -207,6 +263,8 @@ namespace RendezvousAstar {
         AgentPtr uav_;
         AgentPtr ugv_;
         const std::vector<int32_t> path_id_set_;
+        std::atomic<bool> stop_{false};
+        std::shared_mutex mutex_;
         Astar astar_;
     };
 } // namespace RendezvousAstar
@@ -225,8 +283,14 @@ int main(int argc, char** argv) {
 
     RendezvousAstar::One2One o2o(uav, ugv);
 
-    pathSearch.setPlan([&](const Eigen::Vector3d& spos, const Eigen::Vector3d& epos) { o2o.plan(spos, epos, nh); });
-
+    if (config.multiThread) {
+        pathSearch.setPlan([&o2o, &nh](const Eigen::Vector3d& spos, const Eigen::Vector3d& epos) {
+            o2o.planMultiThread(spos, epos, nh);
+        });
+    } else {
+        pathSearch.setPlan(
+            [&o2o, &nh](const Eigen::Vector3d& spos, const Eigen::Vector3d& epos) { o2o.plan(spos, epos, nh); });
+    }
     // ros::Rate lr(1000);
     // while (ros::ok()) {
     //     ros::spinOnce();

@@ -4,6 +4,7 @@
 #include <Eigen/Eigen>
 #include <functional>
 #include <memory>
+#include <shared_mutex>
 #include <vector>
 namespace RendezvousAstar {
     class Astar {
@@ -96,7 +97,6 @@ namespace RendezvousAstar {
             const Eigen::Vector3i& target, const std::shared_ptr<NodeMap>& nodeMap);
 
         // 获取公共点数量
-        size_t getCommonNum() const;
 
         static bool isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set);
 
@@ -106,26 +106,43 @@ namespace RendezvousAstar {
         /// 2D环境下的移动方向和代价
         static std::vector<std::array<double, 4>> direct2d_;
 
-        void resetCommonSet() {
-            std::lock_guard<std::mutex> lock(mutex_);
-            common_set_.clear();
-        }
-
         void addThresholdOneStep() {
-            std::lock_guard<std::mutex> lock(mutex_);
+            std::unique_lock lock(mutex_);
             threshold_ += threshold_/2;
         }
 
-        auto& getCommonSet() {
-            std::lock_guard<std::mutex> lock(mutex_);
+        size_t getCommonNum() const {
+            std::shared_lock lock(mutex_);
+            return common_set_.size();
+        };
+
+        void resetCommonSet() {
+            std::unique_lock lock(mutex_);
+            common_set_.clear();
+        }
+
+        const std::shared_ptr<Node>& sortCommonSet(const std::function<bool(const std::shared_ptr<Node>&, const std::shared_ptr<Node>&)>& compare) {
+            std::unique_lock<std::shared_mutex> lock(mutex_);
+            sort(common_set_.begin(), common_set_.end(), compare);
+            return *common_set_.begin();
+        }
+
+        void insertCommonSet(std::shared_ptr<Node> node) {
+            std::unique_lock<std::shared_mutex> lock(mutex_);
+            common_set_.emplace_back(node);
+        }
+
+        auto getCommonSet() {
+            std::shared_lock<std::shared_mutex> lock(mutex_);
             return common_set_;
         }
+
 
     private:
         std::vector<std::shared_ptr<Node>> common_set_;
         int32_t threshold_; ///< 阈值
         int32_t step_; ///< 步数限制
-        mutable std::mutex mutex_;
+        mutable std::shared_mutex mutex_;
     };
 
 } // namespace RendezvousAstar

@@ -21,6 +21,7 @@
     </node>
 
     <node pkg="RendezvousAstar" type="one2one" name="one2one_searching_node" output="screen">
+        <param name="multithreading" type="bool" value="true"/>
         <rosparam file="$(find RendezvousAstar)/config/rendezvous.yaml" command="load"/>
     </node>
 </launch>
