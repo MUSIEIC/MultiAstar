@@ -13,8 +13,7 @@ namespace RendezvousAstar {
         id_set_.erase(id_);
     }
 
-    Agent::Agent(const int32_t id, Eigen::Vector3d initial_pos, const Eigen::Vector3i& pos)
-        : id_(id), initial_pos_(std::move(initial_pos)) {
+    Agent::Agent(const int32_t id, Eigen::Vector3d initial_pos) : id_(id), initial_pos_(std::move(initial_pos)) {
         {
             std::lock_guard<std::mutex> lock(id_set_mutex_);
             if (id_set_.find(id_) != id_set_.end()) {
@@ -25,13 +24,15 @@ namespace RendezvousAstar {
             }
             id_set_.insert(id_);
         }
-        pos_      = NodeMap::posD2I(initial_pos_);
-        auto node = NodeMap::getInstance()->getNode(pos_);
-        if (!node) {
-            node = std::make_shared<Node>(id, nullptr, pos_);
-            NodeMap::getInstance()->addNode(node);
-        }
+        pos_ = NodeMap::posD2I(initial_pos_);
+        // auto node = NodeMap::getInstance()->getNode(pos_);
+        // if (!node) {
+        //     node = std::make_shared<Node>(id, nullptr, pos_);
+        //     NodeMap::getInstance()->addNode(node);
+        // }
+        const auto& node = NodeMap::getInstance()->getNodeForce(pos_, id);
         node->addPath(id_, 0, 0, nullptr);
+        node->setState(id, Node::STATE::INOPEN);
     }
 
     int32_t Agent::getID() const {
@@ -73,8 +74,7 @@ namespace RendezvousAstar {
         }
     }
 
-    UAV::UAV(int32_t id, const Eigen::Vector3d& initial_pos, const Eigen::Vector3i& pos)
-        : Agent(id, initial_pos, pos), state_(INIT) {
+    UAV::UAV(int32_t id, const Eigen::Vector3d& initial_pos) : Agent(id, initial_pos), state_(INIT) {
         std::lock_guard<std::mutex> lock(id_set_mutex_);
         if (id_ <= 0) {
             id_set_.erase(id_);
@@ -89,6 +89,8 @@ namespace RendezvousAstar {
             id_set_.insert(id_);
             ROS_WARN("UAV的id应为正数，已将id修改为：%d", id_);
         }
+        open_list_.insert(std::array<double, 4>{
+            0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
     }
 
     UAV::STATE UAV::getState() const {
@@ -107,15 +109,16 @@ namespace RendezvousAstar {
         state_ = READY;
         open_list_.clear();
 
-        auto node = NodeMap::getInstance()->getNode(pos_);
-        if (!node) {
-            node = std::make_shared<Node>(id, nullptr, pos_);
-            NodeMap::getInstance()->addNode(node);
-        }
+        const auto& node = NodeMap::getInstance()->getNodeForce(pos_, id);
+        // auto node = NodeMap::getInstance()->getNode(pos_);
+        // if (!node) {
+        //     node = std::make_shared<Node>(id, nullptr, pos_);
+        //     NodeMap::getInstance()->addNode(node);
+        // }
         node->addPath(id, 0, 0, nullptr);
         open_list_.insert(std::array<double, 4>{
             0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
-        node->setState(id,Node::STATE::INOPEN);
+        node->setState(id, Node::STATE::INOPEN);
     }
 
 
@@ -142,8 +145,7 @@ namespace RendezvousAstar {
         }
     }
 
-    UGV::UGV(int32_t id, const Eigen::Vector3d& initial_pos, const Eigen::Vector3i& pos)
-        : Agent(id, initial_pos, pos), state_(INIT) {
+    UGV::UGV(int32_t id, const Eigen::Vector3d& initial_pos) : Agent(id, initial_pos), state_(INIT) {
         setPos(pos_);
         std::lock_guard<std::mutex> lock(id_set_mutex_);
         if (id_ >= 0) {
@@ -159,6 +161,8 @@ namespace RendezvousAstar {
             id_set_.insert(id_);
             ROS_WARN("UGV的id应为负数，已将id修改为：%d", id_);
         }
+        open_list_[id].insert(std::array<double, 4>{
+            0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
     }
 
     void UGV::setPos(const Eigen::Vector3i& pos) {
@@ -181,16 +185,16 @@ namespace RendezvousAstar {
         state_ = READY;
         open_list_[id].clear();
 
-        auto node = NodeMap::getInstance()->getNode(pos_);
-        if (!node) {
-            node = std::make_shared<Node>(id, nullptr, pos_);
-            NodeMap::getInstance()->addNode(node);
-        }
+        const auto& node = NodeMap::getInstance()->getNodeForce(pos_, id);
+        // auto node = NodeMap::getInstance()->getNode(pos_);
+        // if (!node) {
+        //     node = std::make_shared<Node>(id, nullptr, pos_);
+        //     NodeMap::getInstance()->addNode(node);
+        // }
         node->addPath(id, 0, 0, nullptr);
-        ;
         open_list_[id].insert(std::array<double, 4>{
             0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
-        node->setState(id,Node::STATE::INOPEN);
+        node->setState(id, Node::STATE::INOPEN);
     }
 
 

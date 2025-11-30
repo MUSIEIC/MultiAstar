@@ -49,10 +49,10 @@ void Visualizer::visualizeStartGoal(const Eigen::Vector3d& center, const double&
     spherePub_.publish(sphereMarkers);
 }
 
-void Visualizer::visualizePath(const std::vector<Eigen::Vector3d>& route) const {
+void Visualizer::visualizePath(const std::vector<Eigen::Vector3d>& route, const int32_t& id) const {
     visualization_msgs::Marker routeMarker;
 
-    routeMarker.id                 = 0;
+    routeMarker.id                 = id;
     routeMarker.type               = visualization_msgs::Marker::LINE_LIST;
     routeMarker.header.stamp       = ros::Time::now();
     routeMarker.header.frame_id    = "odom";
@@ -103,7 +103,7 @@ void Visualizer::visualizeCommon(const Eigen::Vector3d& common) const {
     commonPub_.publish(p);
 }
 
-void Visualizer::visualizeCommonset(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& commonset) const {
+void Visualizer::visualizeCommonSet(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& common_set) const {
     visualization_msgs::Marker comarker;
     geometry_msgs::Point p;
     comarker.header.frame_id = "odom";
@@ -119,7 +119,7 @@ void Visualizer::visualizeCommonset(const std::vector<std::shared_ptr<Rendezvous
     comarker.color.b         = 110;
     comarker.color.a         = 0.5;
 
-    for (const auto& s : commonset) {
+    for (const auto& s : common_set) {
         auto rs = RendezvousAstar::NodeMap::posI2D(s->getPos());
         p.x     = rs.x();
         p.y     = rs.y();

@@ -9,7 +9,7 @@ namespace RendezvousAstar {
         return std::sqrt(3);
     }
 
-    std::vector<std::array<double, 4>> Astar::direct3d_ = {
+    std::vector<std::array<double, 4>> Astar::direct3d26_ = {
         {{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}}, {{0.0, 0.0, 1.0, 1.0}}, {{-1.0, 0.0, 0.0, 1.0}},
             {{0.0, -1.0, 0.0, 1.0}}, {{0.0, 0.0, -1.0, 1.0}}, {{1.0, 1.0, 0.0, sqrt2()}}, {{1.0, 0.0, 1.0, sqrt2()}},
             {{0.0, 1.0, 1.0, sqrt2()}}, {{-1.0, -1.0, 0.0, sqrt2()}}, {{-1.0, 0.0, -1.0, sqrt2()}},
@@ -19,9 +19,16 @@ namespace RendezvousAstar {
             {{1.0, 1.0, -1.0, sqrt3()}}, {{1.0, -1.0, 1.0, sqrt3()}}, {{-1.0, 1.0, 1.0, sqrt3()}},
             {{-1.0, -1.0, 1.0, sqrt3()}}, {{-1.0, 1.0, -1.0, sqrt3()}}, {{1.0, -1.0, -1.0, sqrt3()}}}};
 
-    std::vector<std::array<double, 4>> Astar::direct2d_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
+    std::vector<std::array<double, 4>> Astar::direct3d6_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
+        {{0.0, 0.0, 1.0, 1.0}}, {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{0.0, 0.0, -1.0, 1.0}}}};
+
+
+    std::vector<std::array<double, 4>> Astar::direct2d8_ = {{{{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}},
         {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}, {{1.0, 1.0, 0.0, sqrt2()}}, {{1.0, -1.0, 0.0, sqrt2()}},
         {{-1.0, 1.0, 0.0, sqrt2()}}, {{-1.0, -1.0, 0.0, sqrt2()}}}};
+
+    std::vector<std::array<double, 4>> Astar::direct2d4_ = {
+        {{1.0, 0.0, 0.0, 1.0}}, {{0.0, 1.0, 0.0, 1.0}}, {{-1.0, 0.0, 0.0, 1.0}}, {{0.0, -1.0, 0.0, 1.0}}};
 
     // 设置阈值，用于控制公共节点数量的上限
     void Astar::setThreshold(const int32_t threshold) {
@@ -100,19 +107,25 @@ namespace RendezvousAstar {
 
     //  执行一次A*算法迭代
     Astar::STATE Astar::runOnce(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& goal,
-        const Eigen::Vector3i& desire_pos, const int32_t path_id, const std::vector<int32_t>& path_id_set) {
+        const Eigen::Vector3i& desire_pos, const int32_t path_id, const std::vector<int32_t>& path_id_set,
+        const bool use_more_directs) {
 
         auto nodeMap = NodeMap::getInstance();
         // 根据agent类型选择2D或3D方向数组
-        auto& direct = typeid(*agent) == typeid(UAV) ? direct3d_ : direct2d_;
+        std::vector<std::array<double, 4>>* direct;
+        if (use_more_directs) {
+            direct = &(typeid(*agent) == typeid(UAV) ? direct3d26_ : direct2d8_);
+        } else {
+            direct = &(typeid(*agent) == typeid(UAV) ? direct3d6_ : direct2d4_);
+        }
 
         auto target = goal->getPos();
         if (typeid(*agent) == typeid(UGV)) {
             target.z() = 0;
         }
 
-        auto& open_list  = agent->getOpenList(path_id);
-        auto reach_state = STATE::searching;
+        auto& open_list = agent->getOpenList(path_id);
+        auto state      = STATE::searching;
 
         // 如果开放列表为空，说明搜索完成
         if (open_list.empty()) {
@@ -126,8 +139,13 @@ namespace RendezvousAstar {
         open_list.erase(begin);
 
         if (now->getState(path_id) == Node::STATE::INCLOSED || now->getState(path_id) == Node::STATE::INCOMMONSET) {
-            return reach_state;
+            return state;
         }
+
+        if (computeH(now->getPos(), target) >= 10) {
+            state = STATE::beyond_scope;
+        }
+
         now->setState(path_id, Node::STATE::INCLOSED);
 
         // 如果当前节点被所有目标路径访问过且在地面层，则加入公共集合
@@ -136,20 +154,20 @@ namespace RendezvousAstar {
         }
         // 判断是否到达目标点
         if (now->getPos() == target) {
-            reach_state = STATE::reached;
+            state = STATE::reached;
         }
 
         // 判断公共节点数量是否超过阈值
         if (getCommonNum() >= threshold_) {
-            if (reach_state == STATE::reached) {
+            if (state == STATE::reached) {
                 return STATE::reached_and_common;
             }
-            reach_state = STATE::common_over_threshold;
+            state = STATE::common_over_threshold;
         }
 
 
         // 遍历当前节点的所有邻居节点
-        for (auto& [dx, dy, dz, cost] : direct) {
+        for (auto& [dx, dy, dz, cost] : *direct) {
             int nx = x + dx, ny = y + dy, nz = z + dz;
             // 如果邻居节点是障碍物或已在关闭列表中，则跳过
             if (NodeMap::query(Eigen::Vector3i(nx, ny, nz))) {
@@ -157,11 +175,12 @@ namespace RendezvousAstar {
             }
 
             // 获取或创建邻居节点
-            std::shared_ptr<Node> node = nodeMap->getNode(Eigen::Vector3i(nx, ny, nz));
-            if (!node) {
-                node = std::make_shared<Node>(path_id, now, nx, ny, nz);
-                nodeMap->addNode(node);
-            }
+            auto& node = nodeMap->getNodeForce(nx, ny, nz, path_id, now);
+            // std::shared_ptr<Node> node = nodeMap->getNode(Eigen::Vector3i(nx, ny, nz));
+            // if (!node) {
+            //     node = std::make_shared<Node>(path_id, now, nx, ny, nz);
+            //     nodeMap->addNode(node);
+            // }
             if (node->getState(path_id) == Node::STATE::INCLOSED
                 || node->getState(path_id) == Node::STATE::INCOMMONSET) {
                 continue;
@@ -186,13 +205,13 @@ namespace RendezvousAstar {
             }
         }
 
-        return reach_state;
+        return state;
     }
 
     // 运行完整的A*算法直到满足结束条件
     Astar::STATE Astar::run(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target,
         const Eigen::Vector3i& desire_pos, const int32_t path_id, const std::vector<int32_t>& path_id_set,
-        const std::function<bool(STATE&)>& end_condition) {
+        const std::function<bool(STATE&)>& end_condition, const bool use_more_directs) {
 
         // 初始化
         auto state_now  = STATE::searching;
@@ -205,7 +224,7 @@ namespace RendezvousAstar {
         uint32_t cnt = 0;
         while (!end_condition(state_now)) {
             ++cnt;
-            state_now     = runOnce(agent, target, desire_pos, path_id, path_id_set);
+            state_now     = runOnce(agent, target, desire_pos, path_id, path_id_set, use_more_directs);
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::high_resolution_clock::now() - begin_time);
 

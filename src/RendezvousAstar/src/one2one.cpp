@@ -11,13 +11,14 @@ namespace RendezvousAstar {
 
     class One2One {
     public:
-        One2One(AgentPtr uav, AgentPtr ugv)
-            : uav_(std::move(uav)), ugv_(std::move(ugv)), path_id_set_({uav_->getID(), ugv_->getID()}) {}
+        One2One(AgentPtr uav, AgentPtr ugv, const ros::NodeHandle& nh)
+            : nh_(nh), uav_(std::move(uav)), ugv_(std::move(ugv)), path_id_set_({uav_->getID(), ugv_->getID()}),
+              astar_(std::make_shared<Astar>()) {}
         ~One2One() = default;
 
         bool RendezvousCheck(const Eigen::Vector3i& point) const {
             auto node_map = NodeMap::getInstance();
-            for (const auto& d : Astar::direct2d_) {
+            for (const auto& d : Astar::direct2d8_) {
                 Eigen::Vector3i next_point = {
                     point[0] + static_cast<int32_t>(d[0]), point[1] + static_cast<int32_t>(d[1]), 0};
                 const auto node = node_map->getNode(next_point);
@@ -59,7 +60,7 @@ namespace RendezvousAstar {
             return p1 < p2;
         }
 
-        void plan(const Eigen::Vector3d& uav_pos, const Eigen::Vector3d& ugv_pos, ros::NodeHandle& nh) {
+        void plan(const Eigen::Vector3d& uav_pos, const Eigen::Vector3d& ugv_pos) {
             auto uav_pos_i                        = NodeMap::posD2I(uav_pos);
             auto ugv_pos_i                        = NodeMap::posD2I(ugv_pos);
             std::shared_ptr<Node> rendezvous_node = nullptr;
@@ -67,8 +68,8 @@ namespace RendezvousAstar {
 
             //--------------init----------------------------------------------------------
             Node::version_.fetch_add(1);
-            astar_.resetCommonSet();
-            astar_.setThreshold(100);
+            astar_->resetCommonSet();
+            astar_->setThreshold(100);
             uav_->setPos(uav_pos_i);
             uav_->setInitialPos(uav_pos);
             uav_->reset(uav_->getID());
@@ -84,29 +85,29 @@ namespace RendezvousAstar {
 
             while (true) {
                 if (state_ugv != Astar::STATE::reached && state_ugv != Astar::STATE::map_search_done) {
-                    state_ugv = astar_.runOnce(ugv_, uav_, uav_pos_i, ugv_->getID(), path_id_set_);
+                    state_ugv = astar_->runOnce(ugv_, uav_, uav_pos_i, ugv_->getID(), path_id_set_);
                 }
                 if (state_uav == Astar::STATE::map_search_done) {
                     break;
                 }
-                state_uav = astar_.runOnce(uav_, ugv_, ugv_->getPos(), uav_->getID(), path_id_set_);
+                state_uav = astar_->runOnce(uav_, ugv_, ugv_->getPos(), uav_->getID(), path_id_set_);
                 if (endCondition(state_ugv) || endCondition(state_uav)) {
                     rendezvous_node =
-                        astar_.sortCommonSet([this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2) {
+                        astar_->sortCommonSet([this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2) {
                             return Compare(n1, n2, path_id_set_);
                         });
                     if (state_uav == Astar::STATE::reached || RendezvousCheck(rendezvous_node->getPos())) {
                         break;
                     }
-                    astar_.addThresholdOneStep();
+                    astar_->addThresholdOneStep();
                     ++cnt;
                 }
             }
             ROS_INFO("UAV state: %d,UGV state: %d", state_uav, state_ugv);
-            ROS_INFO("commonSet size: %lu, cnt: %d", astar_.getCommonNum(), cnt);
+            ROS_INFO("commonSet size: %lu, cnt: %d", astar_->getCommonNum(), cnt);
 
             // test
-            if (astar_.getCommonNum() == 0) {
+            if (astar_->getCommonNum() == 0) {
                 ROS_WARN("路径生成失败");
                 return;
             }
@@ -127,15 +128,15 @@ namespace RendezvousAstar {
             ROS_INFO("nodeset num: %lu", NodeMap::getInstance()->getNodeNum());
 
             // Config config(ros::NodeHandle("~"));
-            Visualizer& visualizer = Visualizer::getInstance(nh);
-            visualizer.visualizeCommonset(astar_.getCommonSet());
+            Visualizer& visualizer = Visualizer::getInstance(nh_);
+            visualizer.visualizeCommonSet(astar_->getCommonSet());
             visualizer.visualizeCommon(NodeMap::posI2D(rendezvous_node->getPos()));
-            visualizer.visualizePath(merged_path);
+            visualizer.visualizePath(merged_path, 0);
         }
 
 
         // 多线程版本
-        void planMultiThread(const Eigen::Vector3d& uav_pos, const Eigen::Vector3d& ugv_pos, ros::NodeHandle& nh) {
+        void planMultiThread(const Eigen::Vector3d& uav_pos, const Eigen::Vector3d& ugv_pos) {
             auto uav_pos_i = NodeMap::posD2I(uav_pos);
             auto ugv_pos_i = NodeMap::posD2I(ugv_pos);
             std::promise<std::shared_ptr<Node>> rendezvous_promise;
@@ -146,8 +147,8 @@ namespace RendezvousAstar {
             stop_.store(false);
             bool getRendezvous{false};
             Node::version_.fetch_add(1);
-            astar_.resetCommonSet();
-            astar_.setThreshold(60);
+            astar_->resetCommonSet();
+            astar_->setThreshold(60);
             uav_->setPos(uav_pos_i);
             uav_->setInitialPos(uav_pos);
             uav_->reset(uav_->getID());
@@ -162,7 +163,7 @@ namespace RendezvousAstar {
             std::thread ugv_plan([this, &uav_pos_i]() {
                 ROS_INFO("ugv thread");
                 const auto state_ugv =
-                    astar_.run(ugv_, uav_, uav_pos_i, ugv_->getID(), path_id_set_, [this](const Astar::STATE& ugv) {
+                    astar_->run(ugv_, uav_, uav_pos_i, ugv_->getID(), path_id_set_, [this](const Astar::STATE& ugv) {
                         return stop_.load() || ugv == Astar::STATE::reached || ugv == Astar::STATE::map_search_done
                             || ugv == Astar::STATE::over_time;
                     });
@@ -172,7 +173,7 @@ namespace RendezvousAstar {
             std::thread uav_plan([this, &ugv_pos_i]() {
                 ROS_INFO("uav thread");
                 const auto state_uav =
-                    astar_.run(uav_, ugv_, ugv_pos_i, uav_->getID(), path_id_set_, [this](const Astar::STATE& uav) {
+                    astar_->run(uav_, ugv_, ugv_pos_i, uav_->getID(), path_id_set_, [this](const Astar::STATE& uav) {
                         return stop_.load() || uav == Astar::STATE::map_search_done || uav == Astar::STATE::over_time;
                     });
                 if (state_uav == Astar::STATE::map_search_done) {
@@ -187,7 +188,7 @@ namespace RendezvousAstar {
                     std::vector<std::shared_ptr<Node>> snapshot;
                     {
                         std::shared_lock lock(mutex_);
-                        snapshot = astar_.getCommonSet();
+                        snapshot = astar_->getCommonSet();
                     }
 
                     if (!snapshot.empty()) {
@@ -200,9 +201,10 @@ namespace RendezvousAstar {
                             rendezvous_promise.set_value(node);
                             getRendezvous = true;
                             stop_.store(true);
-                        } else {
-                            astar_.addThresholdOneStep();
                         }
+                        // else {
+                        //     astar_->addThresholdOneStep();
+                        // }
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
@@ -214,7 +216,7 @@ namespace RendezvousAstar {
 
             const auto time_end = std::chrono::high_resolution_clock::now();
             Eigen::Vector3i rendezvous_node;
-            ROS_INFO("commonSet size: %lu", astar_.getCommonNum());
+            ROS_INFO("commonSet size: %lu", astar_->getCommonNum());
             ROS_INFO("one2one time: %ld",
                 std::chrono::duration_cast<std::chrono::microseconds>(time_end - time_begin).count() / 1000);
 
@@ -231,12 +233,7 @@ namespace RendezvousAstar {
                 return;
             }
 
-            // auto rendezvous_node =
-            //     astar_
-            //         .sortCommonSet([this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2) {
-            //             return compare(n1, n2, path_id_set_);
-            //         })
-            //         ->getPos();
+
             const auto path1 =
                 Astar::getRealPath(uav_->getID(), uav_->getPos(), rendezvous_node, NodeMap::getInstance());
             const auto path2 =
@@ -249,10 +246,10 @@ namespace RendezvousAstar {
 
             ROS_INFO("nodeset num: %lu", NodeMap::getInstance()->getNodeNum());
 
-            Visualizer& visualizer = Visualizer::getInstance(nh);
-            visualizer.visualizeCommonset(astar_.getCommonSet());
+            Visualizer& visualizer = Visualizer::getInstance(nh_);
+            visualizer.visualizeCommonSet(astar_->getCommonSet());
             visualizer.visualizeCommon(NodeMap::posI2D(rendezvous_node));
-            visualizer.visualizePath(merged_path);
+            visualizer.visualizePath(merged_path, 0);
         }
 
         static bool endCondition(const Astar::STATE& state) {
@@ -260,12 +257,13 @@ namespace RendezvousAstar {
         }
 
     private:
+        ros::NodeHandle nh_;
         AgentPtr uav_;
         AgentPtr ugv_;
         const std::vector<int32_t> path_id_set_;
         std::atomic<bool> stop_{false};
         std::shared_mutex mutex_;
-        Astar astar_;
+        std::shared_ptr<Astar> astar_;
     };
 } // namespace RendezvousAstar
 
@@ -281,21 +279,17 @@ int main(int argc, char** argv) {
     RendezvousAstar::AgentPtr uav = std::make_shared<RendezvousAstar::UAV>();
     RendezvousAstar::AgentPtr ugv = std::make_shared<RendezvousAstar::UGV>();
 
-    RendezvousAstar::One2One o2o(uav, ugv);
+    RendezvousAstar::One2One o2o(uav, ugv, nh);
 
-    if (config.multiThread) {
-        pathSearch.setPlan([&o2o, &nh](const Eigen::Vector3d& spos, const Eigen::Vector3d& epos) {
-            o2o.planMultiThread(spos, epos, nh);
-        });
+    bool multithread;
+    ros::NodeHandle("~").getParam("multithreading", multithread);
+    if (multithread) {
+        pathSearch.setPlan([&o2o](const std::vector<Eigen::Vector3d>& s_pos,
+                               const std::vector<Eigen::Vector3d>& e_pos) { o2o.planMultiThread(s_pos[0], e_pos[0]); });
     } else {
-        pathSearch.setPlan(
-            [&o2o, &nh](const Eigen::Vector3d& spos, const Eigen::Vector3d& epos) { o2o.plan(spos, epos, nh); });
+        pathSearch.setPlan([&o2o](const std::vector<Eigen::Vector3d>& s_pos,
+                               const std::vector<Eigen::Vector3d>& e_pos) { o2o.plan(s_pos[0], e_pos[0]); });
     }
-    // ros::Rate lr(1000);
-    // while (ros::ok()) {
-    //     ros::spinOnce();
-    //     lr.sleep();
-    // }
 
     ros::AsyncSpinner spinner(4);
     spinner.start();

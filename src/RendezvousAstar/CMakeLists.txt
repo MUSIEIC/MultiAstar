@@ -144,6 +144,7 @@ add_library(${PROJECT_NAME}
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(one2one src/one2one.cpp)
 add_executable(standard src/standard.cpp)
+add_executable(multi2one src/multi2one.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -162,6 +163,11 @@ target_link_libraries(one2one
         ${Eigen_LIBRARIES}
 )
 target_link_libraries(standard
+        ${PROJECT_NAME}
+        ${catkin_LIBRARIES}
+        ${Eigen_LIBRARIES}
+)
+target_link_libraries(multi2one
         ${PROJECT_NAME}
         ${catkin_LIBRARIES}
         ${Eigen_LIBRARIES}

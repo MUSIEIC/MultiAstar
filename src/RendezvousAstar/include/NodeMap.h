@@ -97,11 +97,31 @@ namespace RendezvousAstar {
         std::shared_ptr<Node> getNode(int32_t x, int32_t y, int32_t z) const;
 
         /**
+         * @brief 根据坐标获取节点（强制）,不存在时创建
+         * @param x X坐标
+         * @param y Y坐标
+         * @param z Z坐标
+         * @param pathID 路径ID，仅用于创建节点
+         * @param parent 父节点指针，默认值为nullptr,仅用于创建节点
+         * @return 节点的共享指针的引用
+         */
+        std::shared_ptr<Node>& getNodeForce(int32_t x,int32_t y,int32_t z,int32_t pathID,const std::shared_ptr<Node>& parent=nullptr);
+
+        /**
          * @brief 根据坐标向量获取节点
          * @param pos 坐标向量
          * @return 节点的共享指针，如果不存在则返回nullptr
          */
         std::shared_ptr<Node> getNode(const Eigen::Vector3i& pos) const;
+
+        /**
+         * @brief 根据坐标向量获取节点（强制）,不存在时创建
+         * @param pos 坐标向量
+         * @param pathID 路径ID，仅用于创建节点
+         * @param parent 父节点指针，默认值为nullptr,仅用于创建节点
+         * @return 节点的共享指针的引用
+         */
+        std::shared_ptr<Node>& getNodeForce(const Eigen::Vector3i& pos,int32_t pathID,const std::shared_ptr<Node>& parent=nullptr);
 
 
         /**

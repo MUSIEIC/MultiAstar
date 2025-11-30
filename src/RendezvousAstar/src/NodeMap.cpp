@@ -23,6 +23,26 @@ namespace RendezvousAstar {
             return nullptr;
         }
     }
+    std::shared_ptr<Node>& NodeMap::getNodeForce(
+        const Eigen::Vector3i& pos, const int32_t pathID, const std::shared_ptr<Node>& parent) {
+        {
+            std::shared_lock lock(mutex_);
+            auto it = node_set_.find(pos);
+            if (it != node_set_.end()) {
+                return it->second;
+            }
+        }
+        {
+            std::unique_lock lock(mutex_);
+            auto it = node_set_.find(pos);
+            if (it != node_set_.end()) {
+                return it->second;
+            }
+            auto node      = std::make_shared<Node>(pathID, parent, pos);
+            node_set_[pos] = node;
+            return node_set_[pos];
+        }
+    }
 
     /**
      * @brief 根据坐标获取节点
@@ -33,6 +53,10 @@ namespace RendezvousAstar {
      */
     std::shared_ptr<Node> NodeMap::getNode(const int32_t x, const int32_t y, const int32_t z) const {
         return getNode(Eigen::Vector3i(x, y, z));
+    }
+    std::shared_ptr<Node>& NodeMap::getNodeForce(
+        const int32_t x, const int32_t y, const int32_t z, const int32_t pathID, const std::shared_ptr<Node>& parent) {
+        return getNodeForce(Eigen::Vector3i(x, y, z), pathID, parent);
     }
 
 

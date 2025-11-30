@@ -32,9 +32,9 @@ public:
         return instance;
     }
     void visualizeStartGoal(const Eigen::Vector3d& center, const double& radius, int sg) const;
-    void visualizePath(const std::vector<Eigen::Vector3d>& route) const;
+    void visualizePath(const std::vector<Eigen::Vector3d>& route, const int32_t& id) const;
     void visualizeCommon(const Eigen::Vector3d& common) const;
-    void visualizeCommonset(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& commonset) const;
+    void visualizeCommonSet(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& common_set) const;
 };
 
 #endif // MULTIASTAR_VISUALIZER_H

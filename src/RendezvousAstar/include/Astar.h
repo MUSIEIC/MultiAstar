@@ -30,7 +30,8 @@ namespace RendezvousAstar {
             common_over_threshold, ///< 公共点超过阈值
             reached_and_common, ///< 到达目标点且公共点满足条件
             map_search_done, ///< 地图搜索完成
-            over_time ///< 超时
+            over_time, ///< 超时
+            beyond_scope ///< 超出搜索范围
         };
 
         /**
@@ -40,10 +41,11 @@ namespace RendezvousAstar {
          * @param desire_pos
          * @param path_id 路径ID
          * @param path_id_set commontset判定id集合
+         * @param use_more_directs 是否采用更多扩展方向
          * @return 当前搜索状态
          */
         STATE runOnce(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target, const Eigen::Vector3i& desire_pos,
-            int32_t path_id, const std::vector<int32_t>& path_id_set);
+            int32_t path_id, const std::vector<int32_t>& path_id_set, bool use_more_directs = true);
 
         /**
          * @brief 运行完整的A*算法
@@ -53,10 +55,12 @@ namespace RendezvousAstar {
          * @param path_id 路径ID
          * @param path_id_set commontset判定id集合
          * @param end_condition 终止条件
+         * @param use_more_directs 是否采用更多扩展方向
          * @return 最终搜索状态
          */
         STATE run(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target, const Eigen::Vector3i& deirse_pos,
-            int32_t path_id, const std::vector<int32_t>& path_id_set, const std::function<bool(STATE&)>& end_condition);
+            int32_t path_id, const std::vector<int32_t>& path_id_set, const std::function<bool(STATE&)>& end_condition,
+            bool use_more_directs = true);
 
         /**
          * @brief 设置阈值
@@ -101,27 +105,30 @@ namespace RendezvousAstar {
         static bool isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set);
 
         /// 3D环境下的移动方向和代价
-        static std::vector<std::array<double, 4>> direct3d_;
+        static std::vector<std::array<double, 4>> direct3d26_;
+        static std::vector<std::array<double, 4>> direct3d6_;
 
         /// 2D环境下的移动方向和代价
-        static std::vector<std::array<double, 4>> direct2d_;
+        static std::vector<std::array<double, 4>> direct2d8_;
+        static std::vector<std::array<double, 4>> direct2d4_;
 
         void addThresholdOneStep() {
             std::unique_lock lock(mutex_);
-            threshold_ += threshold_/2;
+            threshold_ += threshold_ / 2;
         }
 
         size_t getCommonNum() const {
             std::shared_lock lock(mutex_);
             return common_set_.size();
-        };
+        }
 
         void resetCommonSet() {
             std::unique_lock lock(mutex_);
             common_set_.clear();
         }
 
-        const std::shared_ptr<Node>& sortCommonSet(const std::function<bool(const std::shared_ptr<Node>&, const std::shared_ptr<Node>&)>& compare) {
+        const std::shared_ptr<Node>& sortCommonSet(
+            const std::function<bool(const std::shared_ptr<Node>&, const std::shared_ptr<Node>&)>& compare) {
             std::unique_lock<std::shared_mutex> lock(mutex_);
             sort(common_set_.begin(), common_set_.end(), compare);
             return *common_set_.begin();

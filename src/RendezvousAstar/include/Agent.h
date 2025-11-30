@@ -19,10 +19,8 @@ namespace RendezvousAstar {
          * @brief 构造函数
          * @param id 智能体ID，默认为0
          * @param initial_pos 初始位置，默认为零向量
-         * @param pos 当前位置，默认为零向量
          */
-        explicit Agent(int32_t id = 0, Eigen::Vector3d initial_pos = Eigen::Vector3d::Zero(),
-            const Eigen::Vector3i& pos = Eigen::Vector3i::Zero());
+        explicit Agent(int32_t id = 0, Eigen::Vector3d initial_pos = Eigen::Vector3d::Zero());
 
         /**
          * @brief 虚析构函数
@@ -99,9 +97,8 @@ namespace RendezvousAstar {
          * @brief 带参数的构造函数
          * @param id 智能体ID
          * @param initial_pos 初始位置
-         * @param pos 当前位置
          */
-        UAV(int32_t id, const Eigen::Vector3d& initial_pos, const Eigen::Vector3i& pos);
+        UAV(int32_t id, const Eigen::Vector3d& initial_pos);
 
         /**
          * @brief 虚析构函数
@@ -154,7 +151,7 @@ namespace RendezvousAstar {
          * @param initial_pos 初始位置
          * @param pos 当前位置
          */
-        UGV(int32_t id, const Eigen::Vector3d& initial_pos, const Eigen::Vector3i& pos);
+        UGV(int32_t id, const Eigen::Vector3d& initial_pos);
 
         /**
          * @brief 虚析构函数
