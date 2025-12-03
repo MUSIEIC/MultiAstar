@@ -172,7 +172,7 @@ namespace RendezvousAstar {
             Eigen::Vector3i rendezvous_node;
             const auto time_end = std::chrono::high_resolution_clock::now();
             ROS_INFO("commonSet size: %lu", astar_->getCommonNum());
-            ROS_INFO("one2one time: %ld",
+            ROS_INFO("mulit2one time: %ld",
                 std::chrono::duration_cast<std::chrono::microseconds>(time_end - time_begin).count() / 1000);
 
             if (getRendezvous) {

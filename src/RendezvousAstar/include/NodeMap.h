@@ -134,6 +134,7 @@ namespace RendezvousAstar {
 
         static void initVoxelMap(const Eigen::Vector3i& size, const Eigen::Vector3d& origin, const double& voxScale);
 
+        void preInit();
         /**
          * @brief 打印节点集合信息（调试用）
          */

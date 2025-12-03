@@ -24,9 +24,11 @@ namespace RendezvousAstar {
         double dilateRadius{};
         double voxelWidth{};
         std::vector<double> mapBound;
+        bool initMapFirst{};
 
         explicit Config(const ros::NodeHandle& nh_) {
             nh_.getParam("MapTopic", mapTopic);
+            nh_.getParam("InitMapFirst", initMapFirst);
             nh_.getParam("TargetTopic", targetTopic);
             nh_.getParam("DilateRadius", dilateRadius);
             nh_.getParam("VoxelWidth", voxelWidth);
@@ -74,6 +76,7 @@ namespace RendezvousAstar {
                 }
 
                 NodeMap::dilate(std::ceil(config_.dilateRadius / config_.voxelWidth));
+                node_map_->preInit();
 
                 mapOccupiedInited = true;
             }

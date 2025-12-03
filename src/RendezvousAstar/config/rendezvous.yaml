@@ -1,5 +1,7 @@
 MapTopic:              '/voxel_map'
 
+InitMapFirst:            true
+
 TargetTopic:            '/move_base_simple/goal'
 
 DilateRadius:           0.5

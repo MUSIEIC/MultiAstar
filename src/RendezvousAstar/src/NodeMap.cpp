@@ -79,6 +79,20 @@ namespace RendezvousAstar {
             voxel_map_init = true;
         }
     }
+    void NodeMap::preInit() {
+        const auto size = voxel_map_->getSize();
+        std::unique_lock lock(mutex_);
+        for (int i = 0; i < size.x(); i++) {
+            for (int j = 0; j < size.y(); j++) {
+                for (int k = 0; k < size.z(); k++) {
+                    if (!voxel_map_->query(Eigen::Vector3i(i, j, k))) {
+                        node_set_.emplace(Eigen::Vector3i(i, j, k), std::make_shared<Node>(0, nullptr, i, j, k));
+                    }
+                }
+            }
+        }
+        ROS_INFO("地图节点预构建完成");
+    }
     /**
      * @brief 打印节点集合信息（调试用）
      */
