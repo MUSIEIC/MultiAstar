@@ -142,7 +142,7 @@ namespace RendezvousAstar {
             return state;
         }
 
-        if (computeH(now->getPos(), target) >= 10) {
+        if (computeH(now->getPos(), desire_pos) >= 10) {
             state = STATE::beyond_scope;
         }
 
@@ -191,7 +191,7 @@ namespace RendezvousAstar {
             if (now->getState(goal->getID()) == Node::STATE::INCLOSED) {
                 nh = now->getG(goal->getID());
             } else {
-                nh = computeH(node->getPos(), goal->getPos());
+                nh = computeH(node->getPos(), desire_pos);
             }
 
 

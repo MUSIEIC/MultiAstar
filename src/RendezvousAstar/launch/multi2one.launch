@@ -21,6 +21,9 @@
     </node>
 
     <node pkg="RendezvousAstar" type="multi2one" name="multi2one_searching_node" output="screen">
+        <param name="uav_num" type="int" value="10" />
+        <param name="ugv_num" type="int" value="1" /><!--目前只支持1个ugv-->
+        <param name="use_more_directs" type="bool" value="true" />
         <rosparam file="$(find RendezvousAstar)/config/rendezvous.yaml" command="load"/>
     </node>
 </launch>
