@@ -198,8 +198,7 @@ namespace RendezvousAstar {
             // 如果新路径更优，则更新节点信息
             if (ng < node->getG(path_id)) {
 
-                node->addPath(path_id, ng, nh, now);
-                node->setState(path_id, Node::STATE::INOPEN);
+                node->addPath(path_id, ng, nh, now, Node::STATE::INOPEN);
                 open_list.insert(
                     {1.02 * nh + ng, static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz)});
             }

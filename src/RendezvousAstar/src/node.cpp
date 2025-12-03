@@ -9,17 +9,16 @@ namespace RendezvousAstar {
     Node::Node(
         const int32_t pathID, const std::shared_ptr<Node>& parent, const int32_t x, const int32_t y, const int32_t z)
         : node_pos_(x, y, z) {
-        addPath(pathID, INT32_MAX, 0, parent);
-        state_[pathID] = UNUSED;
+        addPath(pathID, INT32_MAX, 0, parent, UNUSED);
     }
 
     Node::Node(const int32_t pathID, const std::shared_ptr<Node>& parent, Eigen::Vector3i pos)
         : node_pos_(std::move(pos)) {
-        addPath(pathID, INT32_MAX, 0, parent);
-        state_[pathID] = UNUSED;
+        addPath(pathID, INT32_MAX, 0, parent, UNUSED);
     }
 
-    bool Node::addPath(const int32_t pathID, const double g, const double h, const std::shared_ptr<Node>& parent) {
+    bool Node::addPath(
+        const int32_t pathID, const double g, const double h, const std::shared_ptr<Node>& parent, const STATE state) {
 
         std::unique_lock lock(mutex_);
         path_id_.insert(pathID);
@@ -27,6 +26,7 @@ namespace RendezvousAstar {
         g_[pathID]            = g;
         h_[pathID]            = h;
         parent_[pathID]       = parent;
+        state_[pathID] = state;
         return true;
     }
 

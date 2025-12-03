@@ -31,8 +31,7 @@ namespace RendezvousAstar {
         //     NodeMap::getInstance()->addNode(node);
         // }
         const auto& node = NodeMap::getInstance()->getNodeForce(pos_, id);
-        node->addPath(id_, 0, 0, nullptr);
-        node->setState(id, Node::STATE::INOPEN);
+        node->addPath(id_, 0, 0, nullptr, Node::STATE::INOPEN);
     }
 
     int32_t Agent::getID() const {
@@ -115,10 +114,9 @@ namespace RendezvousAstar {
         //     node = std::make_shared<Node>(id, nullptr, pos_);
         //     NodeMap::getInstance()->addNode(node);
         // }
-        node->addPath(id, 0, 0, nullptr);
+        node->addPath(id, 0, 0, nullptr, Node::STATE::INOPEN);
         open_list_.insert(std::array<double, 4>{
             0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
-        node->setState(id, Node::STATE::INOPEN);
     }
 
 
@@ -191,10 +189,9 @@ namespace RendezvousAstar {
         //     node = std::make_shared<Node>(id, nullptr, pos_);
         //     NodeMap::getInstance()->addNode(node);
         // }
-        node->addPath(id, 0, 0, nullptr);
+        node->addPath(id, 0, 0, nullptr, Node::STATE::INOPEN);
         open_list_[id].insert(std::array<double, 4>{
             0.0, static_cast<double>(pos_[0]), static_cast<double>(pos_[1]), static_cast<double>(pos_[2])});
-        node->setState(id, Node::STATE::INOPEN);
     }
 
 

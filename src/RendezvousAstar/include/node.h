@@ -46,9 +46,10 @@ namespace RendezvousAstar {
          * @param g 从起点到当前节点的实际代价
          * @param h 从当前节点到终点的启发式估计代价
          * @param parent 当前节点在该路径上的父节点
+         * @param state 状态
          * @return 添加成功返回true，否则返回false
          */
-        bool addPath(int32_t pathID, double g, double h, const std::shared_ptr<Node>& parent);
+        bool addPath(int32_t pathID, double g, double h, const std::shared_ptr<Node>& parent, STATE state);
 
         void removePath(int32_t path_id);
 
