@@ -14,7 +14,8 @@ Visualizer::Visualizer(ros::NodeHandle& nh)
     commonSetPub_ = nh.advertise<visualization_msgs::Marker>("/visualizer/common_set", 1000);
 }
 
-void Visualizer::visualizeStartGoal(const Eigen::Vector3d& center, const double& radius, int sg) const {
+void Visualizer::visualizeStartGoal(
+    const Eigen::Vector3d& center, const double& radius, int sg, int change_color) const {
     visualization_msgs::Marker sphereMarkers;
 
     sphereMarkers.id                 = sg;
@@ -24,14 +25,19 @@ void Visualizer::visualizeStartGoal(const Eigen::Vector3d& center, const double&
     sphereMarkers.pose.orientation.w = 1.00;
     sphereMarkers.action             = visualization_msgs::Marker::ADD;
     sphereMarkers.ns                 = "StartGoal";
-    sphereMarkers.color.r            = 1.00;
-    sphereMarkers.color.g            = 0.00;
-    sphereMarkers.color.b            = 0.00;
-    sphereMarkers.color.a            = 1.00;
-    sphereMarkers.scale.x            = radius * 2.0;
-    sphereMarkers.scale.y            = radius * 2.0;
-    sphereMarkers.scale.z            = radius * 2.0;
-
+    if (sg == change_color) {
+        sphereMarkers.color.r = 0.00;
+        sphereMarkers.color.g = 0.00;
+        sphereMarkers.color.b = 1.00;
+    } else {
+        sphereMarkers.color.r = 1.00;
+        sphereMarkers.color.g = 0.00;
+        sphereMarkers.color.b = 0.00;
+    }
+    sphereMarkers.color.a                    = 1.00;
+    sphereMarkers.scale.x                    = radius * 2.0;
+    sphereMarkers.scale.y                    = radius * 2.0;
+    sphereMarkers.scale.z                    = radius * 2.0;
     visualization_msgs::Marker sphereDeleter = sphereMarkers;
     sphereDeleter.action                     = visualization_msgs::Marker::DELETEALL;
 
@@ -59,11 +65,17 @@ void Visualizer::visualizePath(const std::vector<Eigen::Vector3d>& route, const 
     routeMarker.pose.orientation.w = 1.00;
     routeMarker.action             = visualization_msgs::Marker::ADD;
     routeMarker.ns                 = "route";
-    routeMarker.color.r            = 1.00;
-    routeMarker.color.g            = 0.00;
-    routeMarker.color.b            = 0.00;
-    routeMarker.color.a            = 1.00;
-    routeMarker.scale.x            = 0.1;
+    if (id > 0) {
+        routeMarker.color.r = 1.00;
+        routeMarker.color.g = 0.00;
+        routeMarker.color.b = 0.00;
+    } else {
+        routeMarker.color.r = 0.00;
+        routeMarker.color.g = 0.00;
+        routeMarker.color.b = 1.00;
+    }
+    routeMarker.color.a = 1.00;
+    routeMarker.scale.x = 0.1;
 
 
     if (route.size() > 0) {
