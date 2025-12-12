@@ -86,15 +86,19 @@ namespace RendezvousAstar {
         void ComputePriority(const NodePtr& node, std::vector<AgentPtr>& UAVs) {
 
             std::sort(UAVs.begin(), UAVs.end(), [&node](const AgentPtr& uav1, const AgentPtr& uav2) {
+                double p1= uav1->getPower();
+                double p2= uav2->getPower();
+                double np1 = (p1 - 0.2) / 0.8;
+                double np2 = (p2 - 0.2) / 0.8;
                 double ng1 = Multi2One::N_G(node->getG(uav1->getID()), 0.1);
                 double ng2 = Multi2One::N_G(node->getG(uav2->getID()), 0.1);
-                double np1 = (uav1->getPower() - 0.2) / 0.8;
-                double np2 = (uav2->getPower() - 0.2) / 0.8;
 
                 double ag1 = Multi2One::alphaG(node->getG(uav1->getID()), 0.4, 0.5, 10.0);
                 double ag2 = Multi2One::alphaG(node->getG(uav2->getID()), 0.4, 0.5, 10.0);
                 double s1  = (1.0 - ag1) * (1.0 - ng1) + ag1 * (1.0 - np1);
                 double s2  = (1.0 - ag2) * (1.0 - ng2) + ag2 * (1.0 - np2);
+                s1=p1>=0.2?s1:1.0;
+                s2=p2>=0.2?s2:1.0;
                 return s1 > s2;
             });
         }
