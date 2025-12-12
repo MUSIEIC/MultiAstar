@@ -124,19 +124,16 @@ namespace RendezvousAstar {
             target.z() = 0;
         }
 
-        auto& open_list = agent->getOpenList(path_id);
-        auto state      = STATE::searching;
+        auto state = STATE::searching;
 
         // 如果开放列表为空，说明搜索完成
-        if (open_list.empty()) {
+        if (agent->openListEmpty()) {
             return STATE::map_search_done;
         }
 
         // 取出开放列表中f值最小的节点
-        auto [f, x, y, z] = *open_list.begin();
+        auto [f, x, y, z] = agent->openListPopTop();
         auto now          = nodeMap->getNode(Eigen::Vector3i(x, y, z));
-        auto begin        = open_list.begin();
-        open_list.erase(begin);
 
         if (now->getState(path_id) == Node::STATE::INCLOSED || now->getState(path_id) == Node::STATE::INCOMMONSET) {
             return state;
@@ -191,7 +188,7 @@ namespace RendezvousAstar {
             if (now->getState(goal->getID()) == Node::STATE::INCLOSED) {
                 nh = now->getG(goal->getID());
             } else {
-                nh = computeH(node->getPos(), desire_pos);
+                nh = 0.5 * computeH(node->getPos(), desire_pos) + 0.5 * computeH(node->getPos(), target);
             }
 
 
@@ -199,7 +196,7 @@ namespace RendezvousAstar {
             if (ng < node->getG(path_id)) {
 
                 node->addPath(path_id, ng, nh, now, Node::STATE::INOPEN);
-                open_list.insert(
+                agent->openListInsert(
                     {1.02 * nh + ng, static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz)});
             }
         }
@@ -217,7 +214,7 @@ namespace RendezvousAstar {
         auto begin_time = std::chrono::high_resolution_clock::now();
 
         // agent初始化
-        agent->reset(path_id);
+        agent->reset();
 
         // 循环执行A*算法直到满足结束条件或超时
         uint32_t cnt = 0;
@@ -228,9 +225,9 @@ namespace RendezvousAstar {
                 std::chrono::high_resolution_clock::now() - begin_time);
 
             // 如果超过5秒则超时退出
-            if (duration >= std::chrono::milliseconds(5000)) {
+            if (duration >= std::chrono::milliseconds(10000)) {
                 state_now = STATE::over_time;
-                ROS_WARN("Rendezvous::Astar::run: overtime >=5s");
+                ROS_WARN("Rendezvous::Astar::run: overtime >=10s");
                 break;
             }
             if (state_now == STATE::map_search_done) {

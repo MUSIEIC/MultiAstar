@@ -26,7 +26,7 @@ namespace RendezvousAstar {
         g_[pathID]            = g;
         h_[pathID]            = h;
         parent_[pathID]       = parent;
-        state_[pathID] = state;
+        state_[pathID]        = state;
         return true;
     }
 

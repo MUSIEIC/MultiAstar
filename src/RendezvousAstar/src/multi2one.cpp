@@ -1,11 +1,14 @@
 #include "Astar.h"
 #include <atomic>
 #include <future>
+#include <geometry_msgs/PoseArray.h>
 #include <ros/ros.h>
 #include <thread>
 #include <unordered_map>
+#include <yaml-cpp/yaml.h>
 
 #include "Ros.hpp"
+#include "one2one.hpp"
 
 namespace RendezvousAstar {
 
@@ -15,14 +18,18 @@ namespace RendezvousAstar {
     public:
         Multi2One(const std::vector<Eigen::Vector3d>& uav_pos, const std::vector<Eigen::Vector3d>& ugv_pos,
             const ros::NodeHandle& nh)
-            : nh_(nh), astar_(std::make_shared<Astar>()) {
+            : nh_(nh), astar_(std::make_shared<Astar>()), visualizer_(Visualizer::getInstance(nh_)),
+              use_more_directs_(true) {
             ros::NodeHandle("~").getParam("use_more_directs", use_more_directs_);
             Eigen::Vector3i sum = {0, 0, 0};
-            for (int32_t i = 0; i < uav_pos.size(); ++i) {
-                uavs_.emplace_back(std::make_shared<UAV>(i + 1, uav_pos[i]));
-                path_id_set_.push_back(uavs_[i]->getID());
-                uav_states_[uavs_[i]->getID()] = Astar::STATE::searching;
-                sum += uavs_[i]->getPos();
+            createUAVbyYaml();
+            int j = 0;
+            for (const auto& uav : uavs_) {
+                uav->setPos(NodeMap::posD2I(uav_pos[j++]));
+                path_id_set_.push_back(uav->getID());
+                uav_states_[uav->getID()] = Astar::STATE::searching;
+                G_before_[uav->getID()]   = 0;
+                sum += uav->getPos();
             }
             for (int32_t i = 0; i < ugv_pos.size(); ++i) {
                 ugvs_.emplace_back(std::make_shared<UGV>(-(i + 1), ugv_pos[i]));
@@ -31,6 +38,8 @@ namespace RendezvousAstar {
             center_    = sum / uav_pos.size();
             center_[2] = 0;
             ROS_INFO("Center: %d %d", center_[0], center_[1]);
+
+            route_pub_ = nh_.advertise<geometry_msgs::PoseArray>("MultiAstarRoute", 10);
         }
         ~Multi2One() = default;
 
@@ -48,40 +57,103 @@ namespace RendezvousAstar {
             }
             return true;
         }
-        static bool Compare(
-            const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2, const std::vector<int32_t>& path_id_set) {
-            double power        = 0.7;
-            double vf           = 0.5;
-            double vc           = 0.3;
-            double hover_weight = 1.0, move_weight = 1.5;
-            double gf1 = 0.0, gc1 = 0.0;
-            double gf2 = 0.0, gc2 = 0.0;
-            double time1 = 0.0;
-            double time2 = 0.0;
-            for (const auto& id : path_id_set) {
-                if (id > 0) {
-                    time1 += n1->getG(id) / vf;
-                    time2 += n2->getG(id) / vf;
-                } else {
-                    time1 += n1->getG(id) / vc;
-                    time2 += n2->getG(id) / vc;
+
+        void createUAVbyYaml() {
+            YAML::Node config      = YAML::LoadFile("/home/haung/prog/MultiAstar/src/RendezvousAstar/launch/uav.yaml");
+            const YAML::Node& UAVs = config["UAVs"];
+            for (const auto& uav : UAVs) {
+                int32_t id = uav["id"].as<int32_t>();
+                Eigen::Vector3d init_pos;
+                const YAML::Node& pos_node = uav["initialPosition"];
+                int i                      = 0;
+                for (const auto& pos : pos_node) {
+                    init_pos[i++] = pos.as<double>();
                 }
+                double power = uav["power"].as<double>();
+                uavs_.emplace_back(std::make_shared<UAV>(id, init_pos, power));
             }
+        }
+
+        static double alphaG(double G, double alpha = 0.4, double a = 0.5, double G0 = 20.0) {
+            double s = 1.0 / (1.0 + std::exp(-a * (G - G0)));
+            return alpha + (1.0 - alpha) * s;
+        }
+
+        static double N_G(double G, double lam = 0.1) {
+            return 1.0 - std::exp(-lam * G);
+        }
+
+        void ComputePriority(const NodePtr& node, std::vector<AgentPtr>& UAVs) {
+
+            std::sort(UAVs.begin(), UAVs.end(), [&node](const AgentPtr& uav1, const AgentPtr& uav2) {
+                double ng1 = Multi2One::N_G(node->getG(uav1->getID()), 0.1);
+                double ng2 = Multi2One::N_G(node->getG(uav2->getID()), 0.1);
+                double np1 = (uav1->getPower() - 0.2) / 0.8;
+                double np2 = (uav2->getPower() - 0.2) / 0.8;
+
+                double ag1 = Multi2One::alphaG(node->getG(uav1->getID()), 0.4, 0.5, 10.0);
+                double ag2 = Multi2One::alphaG(node->getG(uav2->getID()), 0.4, 0.5, 10.0);
+                double s1  = (1.0 - ag1) * (1.0 - ng1) + ag1 * (1.0 - np1);
+                double s2  = (1.0 - ag2) * (1.0 - ng2) + ag2 * (1.0 - np2);
+                return s1 > s2;
+            });
+        }
+
+        double ComputeCost(const NodePtr& node) {
+            double t_g      = node->getG(ugvs_[0]->getID()) / 0.3; // ugv speed :0.3
+            double cost     = 0.0;
+            double t_l      = 1.0;
+            double t_before = -1000;
+            for (const auto& uav : uavs_) {
+                double t = node->getG(uav->getID()) / 0.5; // uav speed :0.5
+                t        = std::max({t, t_before + t_l, t_g});
+                cost     = std::max(cost, t + t_l);
+                t_before = t;
+            }
+            return cost;
+        }
+
+        bool Compare(const NodePtr& n1, const NodePtr& n2) {
+            // double power        = 0.7;
+            // double vf           = 0.5;
+            // double vc           = 0.3;
+            // double hover_weight = 1.0, move_weight = 1.5;
+            // double gf1 = 0.0, gc1 = 0.0;
+            // double gf2 = 0.0, gc2 = 0.0;
+            // double time1 = 0.0;
+            // double time2 = 0.0;
+            // for (const auto& id : path_id_set) {
+            //     if (id > 0) {
+            //         time1 += (n1->getG(id) + G_before.at(id)) / vf;
+            //         time2 += (n2->getG(id) + G_before.at(id)) / vf;
+            //     } else {
+            //         time1 += n1->getG(id) / vc;
+            //         time2 += n2->getG(id) / vc;
+            //     }
+            // }
+
+            auto UAVs = uavs_;
+
+            ComputePriority(n1, UAVs);
+            double cost1 = ComputeCost(n1);
+
+            ComputePriority(n2, UAVs);
+            double cost2 = ComputeCost(n2);
+
+            return cost1 < cost2;
 
 
             // const double p1=gc1+gf1;
             // const double p2=gc2+gf2;
 
-            return time1 < time2;
+            // return time1 < time2;
         }
 
-        // TODO: 现在的似乎还行，走斜线的话耗时较长
         void plan() {
-            std::promise<std::shared_ptr<Node>> rendezvous_promise;
-            std::future<std::shared_ptr<Node>> rendezvous_future = rendezvous_promise.get_future();
+            std::promise<NodePtr> rendezvous_promise;
+            std::future<NodePtr> rendezvous_future = rendezvous_promise.get_future();
             bool getRendezvous{false};
 
-            Node::version_.fetch_add(1);
             stop_.store(false);
             std::vector<std::thread> threads;
 
@@ -128,27 +200,18 @@ namespace RendezvousAstar {
             threads.emplace_back([this, &rendezvous_promise, &getRendezvous]() {
                 while (!stop_.load()) {
                     std::vector<NodePtr> snapshot = astar_->getCommonSet();
-                    // Astar::STATE state;
-                    //  {
-                    //     std::shared_lock lock(mutex_);
-                    //     state=ugv_states_[ugvs_[0]->getID()];
-                    // }
                     if (!snapshot.empty()) {
                         auto id_set = path_id_set_;
                         id_set.emplace_back(ugvs_[0]->getID());
                         sort(snapshot.begin(), snapshot.end(),
-                            [&id_set](const NodePtr& n1, const NodePtr& n2) { return Compare(n1, n2, id_set); });
+                            [this](const NodePtr& n1, const NodePtr& n2) { return Compare(n1, n2); });
 
                         const auto node = snapshot.front();
-                        // rendezvous_promise.set_value(node);
-                        // getRendezvous = true;
-                        // stop_.store(true);
                         if (RendezvousCheck(node->getPos())) {
                             rendezvous_promise.set_value(node);
                             getRendezvous = true;
                             stop_.store(true);
                         }
-                        // else if ()
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
@@ -159,15 +222,7 @@ namespace RendezvousAstar {
                     thread.join();
                 }
             }
-            Visualizer& visualizer = Visualizer::getInstance(nh_);
-            visualizer.visualizeCommonSet(astar_->getCommonSet());
-
-            // auto id_set = path_id_set_;
-            // id_set.emplace_back(ugvs_[0]->getID());
-            // std::sort(astar_->getCommonSet().begin(), astar_->getCommonSet().end(),
-            //     [&id_set](const NodePtr& n1, const NodePtr& n2) { return Compare(n1, n2, id_set); });
-            //
-            // const auto rendezvous_node = rendezvous_future.get()->getPos();
+            visualizer_.visualizeCommonSet(astar_->getCommonSet());
 
             Eigen::Vector3i rendezvous_node;
             const auto time_end = std::chrono::high_resolution_clock::now();
@@ -189,31 +244,58 @@ namespace RendezvousAstar {
             }
 
 
-            visualizer.visualizeCommon(NodeMap::posI2D(rendezvous_node));
+            visualizer_.visualizeCommon(NodeMap::posI2D(rendezvous_node));
+            std::vector<std::vector<Eigen::Vector3d>> paths;
             for (const auto& uav : uavs_) {
                 const auto path =
                     Astar::getRealPath(uav->getID(), uav->getPos(), rendezvous_node, NodeMap::getInstance());
-                visualizer.visualizePath(path, uav->getID());
+                paths.push_back(path);
+                visualizer_.visualizePath(path, uav->getID());
             }
-            visualizer.visualizePath(
-                Astar::getRealPath(ugvs_[0]->getID(), ugvs_[0]->getPos(), rendezvous_node, NodeMap::getInstance()),
-                ugvs_[0]->getID());
+
+            const auto ugv_path =
+                Astar::getRealPath(ugvs_[0]->getID(), ugvs_[0]->getPos(), rendezvous_node, NodeMap::getInstance());
+            paths.push_back(ugv_path);
+            visualizer_.visualizePath(ugv_path, ugvs_[0]->getID());
+
+            int i = 0;
+            for (const auto& path : paths) {
+                routePub(path, i++);
+                ros::Duration(0.1).sleep();
+            }
         }
 
         static bool endCondition(const Astar::STATE& state) {
             return state == Astar::STATE::common_over_threshold || state == Astar::STATE::reached_and_common;
         }
 
+        void routePub(const std::vector<Eigen::Vector3d>& route, const int32_t id) {
+            geometry_msgs::PoseArray pose_array;
+            for (const auto& point : route) {
+                geometry_msgs::Pose pose;
+                pose.position.x    = point[0];
+                pose.position.y    = point[1];
+                pose.position.z    = point[2];
+                pose.orientation.x = id;
+                pose_array.poses.push_back(pose);
+            }
+            route_pub_.publish(pose_array);
+        }
+
     private:
         ros::NodeHandle nh_;
         std::vector<AgentPtr> uavs_, ugvs_;
         std::unordered_map<int32_t, Astar::STATE> uav_states_, ugv_states_;
+        std::unordered_map<int32_t, double> G_before_;
         std::vector<int32_t> path_id_set_;
         std::atomic<bool> stop_{false};
         std::shared_mutex mutex_;
         std::shared_ptr<Astar> astar_;
         bool use_more_directs_;
         Eigen::Vector3i center_;
+        Visualizer& visualizer_;
+        std::shared_ptr<NodeMap> node_map_ = NodeMap::getInstance();
+        ros::Publisher route_pub_;
     };
 
 } // namespace RendezvousAstar
@@ -225,22 +307,35 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
     RendezvousAstar::Config config(ros::NodeHandle("~"));
     Visualizer::getInstance(nh);
-    int uav_num=1, ugv_num=1;
+    int uav_num = 1, ugv_num = 1;
     ros::NodeHandle("~").getParam("uav_num", uav_num);
     ros::NodeHandle("~").getParam("ugv_num", ugv_num);
     RendezvousAstar::PathSearch pathSearch(config, nh, uav_num, ugv_num);
 
     pathSearch.setPlan([&nh](const std::vector<Eigen::Vector3d>& s_pos, const std::vector<Eigen::Vector3d>& e_pos) {
+        RendezvousAstar::Node::version_.fetch_add(1);
         RendezvousAstar::Multi2One multi2one(s_pos, e_pos, nh);
         multi2one.plan();
     });
 
-    //-----------------------test-----------------------------
+    // //-----------------------test-----------------------------
     // pathSearch.setPlan([&nh](const std::vector<Eigen::Vector3d>& s_pos, const std::vector<Eigen::Vector3d>& e_pos) {
-    //     std::vector<Eigen::Vector3d> s_pos_t = {{-22.748, 21.344, 1.0}, {-18.010, 5.303, 1.0}, {-18.133, -5.387, 1.0},
-    //         {17.874, 8.108, 1.0}, {1.792, 17.621,1.0}, {3.954, -13.145, 1.0}};
+    //     std::vector<Eigen::Vector3d> s_pos_t = {
+    //         {-13.447, 17.039, 1.0},
+    //         {-6.527, 9.291, 1.0},
+    //         {-0.891, 20.033, 1.0},
+    //         {0.313, 1.046, 1.0},
+    //         {18.125, 7.565, 1.0},
+    //         {-18.541, 3.072, 1.0},
+    //         {-19.353, -1.147, 1.0},
+    //         {4.871, 16.593, 1.0},
+    //         {0.439, 6.427, 1.0},
+    //         {-5.866, -2.508, 1.0},
+    //         {11.612, -7.348, 1.0},
+    //     };
     //
-    //     std::vector<Eigen::Vector3d> e_pos_t={{-4.441,-1.392,0.0}};
+    //     std::vector<Eigen::Vector3d> e_pos_t = {{9.758, -10.795, 1.0}};
+    //     RendezvousAstar::Node::version_.fetch_add(1);
     //     RendezvousAstar::Multi2One multi2one(s_pos_t, e_pos_t, nh);
     //     multi2one.plan();
     // });

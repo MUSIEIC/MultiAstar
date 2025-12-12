@@ -19,8 +19,9 @@ namespace RendezvousAstar {
          * @brief 构造函数
          * @param id 智能体ID，默认为0
          * @param initial_pos 初始位置，默认为零向量
+         * @param power 能量，百分比，默认为1.0
          */
-        explicit Agent(int32_t id = 0, Eigen::Vector3d initial_pos = Eigen::Vector3d::Zero());
+        explicit Agent(int32_t id = 0, Eigen::Vector3d initial_pos = Eigen::Vector3d::Zero(), double power = 1.0f);
 
         /**
          * @brief 虚析构函数
@@ -45,10 +46,11 @@ namespace RendezvousAstar {
          */
         Eigen::Vector3i getPos() const;
 
-        virtual Queue& getOpenList(int32_t path_id) = 0;
+        double getPower() const;
+        // virtual Queue& getOpenList(int32_t path_id) = 0;
 
 
-        virtual void reset(int32_t path_id) = 0;
+        virtual void reset() = 0;
 
         /**
          * @brief 设置当前位置
@@ -62,13 +64,27 @@ namespace RendezvousAstar {
          */
         void setInitialPos(const Eigen::Vector3d& initial_pos);
 
+        void setPower(const double power);
+
+        virtual bool openListEmpty() = 0;
+
+        virtual std::array<double, 4> openListGetTop() = 0;
+
+        virtual std::array<double, 4> openListPopTop() = 0;
+
+        virtual void openListErase(const std::array<double, 4>& element) = 0;
+
+        virtual void openListInsert(const std::array<double, 4>& element) = 0;
+
+
     protected:
         static std::unordered_set<int32_t> id_set_; ///< 存储已使用的ID集合，防止重复ID
         int32_t id_; ///< 智能体唯一标识符
         Eigen::Vector3d initial_pos_; ///< 智能体初始位置（三维浮点坐标）
         Eigen::Vector3i pos_; ///< 智能体当前位置（三维整数坐标）
-        mutable std::mutex mutex_;
+        mutable std::shared_mutex mutex_;
         static std::mutex id_set_mutex_;
+        double power_;
     };
 
 
@@ -98,7 +114,7 @@ namespace RendezvousAstar {
          * @param id 智能体ID
          * @param initial_pos 初始位置
          */
-        UAV(int32_t id, const Eigen::Vector3d& initial_pos);
+        UAV(int32_t id, const Eigen::Vector3d& initial_pos, double power = 1.0);
 
         /**
          * @brief 虚析构函数
@@ -111,13 +127,23 @@ namespace RendezvousAstar {
          */
         STATE getState() const;
 
-        Queue& getOpenList(int32_t id) override;
-        void reset(int32_t id) override;
+        // Queue& getOpenList(int32_t id) override;
+        void reset() override;
         /**
          * @brief 设置当前状态
          * @param state 新的状态
          */
         void setState(const STATE& state);
+
+        bool openListEmpty() override;
+
+        void openListErase(const std::array<double, 4>& element) override;
+
+        std::array<double, 4> openListGetTop() override;
+
+        std::array<double, 4> openListPopTop() override;
+
+        void openListInsert(const std::array<double, 4>& element) override;
 
     private:
         STATE state_; ///< UAV当前状态
@@ -149,9 +175,8 @@ namespace RendezvousAstar {
          * @brief 带参数的构造函数
          * @param id 智能体ID
          * @param initial_pos 初始位置
-         * @param pos 当前位置
          */
-        UGV(int32_t id, const Eigen::Vector3d& initial_pos);
+        UGV(int32_t id, const Eigen::Vector3d& initial_pos, double power = 1.0);
 
         /**
          * @brief 虚析构函数
@@ -164,8 +189,8 @@ namespace RendezvousAstar {
          */
         STATE getState() const;
 
-        Queue& getOpenList(int32_t id) override;
-        void reset(int32_t id) override;
+        // Queue& getOpenList(int32_t id) override;
+        void reset() override;
 
         /**
          * @brief 设置当前位置（重写父类方法）
@@ -179,9 +204,19 @@ namespace RendezvousAstar {
          */
         void setState(const STATE& state);
 
+        bool openListEmpty() override;
+
+        void openListErase(const std::array<double, 4>& element) override;
+
+        void openListInsert(const std::array<double, 4>& element) override;
+
+        std::array<double, 4> openListGetTop() override;
+
+        std::array<double, 4> openListPopTop() override;
+
     private:
         STATE state_; ///< UGV当前状态
-        std::unordered_map<int32_t, Queue> open_list_;
+        Queue open_list_;
     };
 
 } // namespace RendezvousAstar

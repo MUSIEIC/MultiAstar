@@ -91,7 +91,7 @@ namespace RendezvousAstar {
                 }
             }
         }
-        ROS_INFO("地图节点预构建完成");
+        ROS_INFO("地图节点预构建完成 size: %lu", node_set_.size());
     }
     /**
      * @brief 打印节点集合信息（调试用）

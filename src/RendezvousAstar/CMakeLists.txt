@@ -10,6 +10,7 @@ add_compile_options(-std=c++17)
 ## is used, also find other catkin packages
 find_package(Eigen3 REQUIRED)
 find_package(rostest REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
         roscpp
         rosmsg
@@ -142,9 +143,9 @@ add_library(${PROJECT_NAME}
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(one2one src/one2one.cpp)
+add_executable(one2one src/one2one.cpp include/one2one.hpp)
 add_executable(standard src/standard.cpp)
-add_executable(multi2one src/multi2one.cpp)
+add_executable(multi2one src/multi2one.cpp include/one2one.hpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -171,6 +172,7 @@ target_link_libraries(multi2one
         ${PROJECT_NAME}
         ${catkin_LIBRARIES}
         ${Eigen_LIBRARIES}
+        ${YAML_CPP_LIBRARIES}
 )
 if (CATKIN_ENABLE_TESTING)
     enable_testing()
