@@ -102,22 +102,22 @@ namespace RendezvousAstar {
             return 1.0 - std::exp(-lam * G);
         }
 
+        static double Score(const NodePtr& node, const AgentPtr& agent) {
+            double p1  = agent->getPower();
+            double np1 = (p1 - 0.2) / 0.8;
+            double ng1 = N_G(node->getG(agent->getID()), 0.1);
+
+            double ag1 = alphaG(node->getG(agent->getID()), 0.4, 0.5, 5.0);
+            double s1  = (1.0 - ag1) * (1.0 - ng1) + ag1 * (1.0 - np1);
+            s1         = p1 >= 0.2 ? s1 : 1.0;
+            return s1;
+        }
+
         static void ComputePriority(const NodePtr& node, std::vector<AgentPtr>& UAVs) {
 
             std::sort(UAVs.begin(), UAVs.end(), [&node](const AgentPtr& uav1, const AgentPtr& uav2) {
-                double p1  = uav1->getPower();
-                double p2  = uav2->getPower();
-                double np1 = (p1 - 0.2) / 0.8;
-                double np2 = (p2 - 0.2) / 0.8;
-                double ng1 = Multi2One::N_G(node->getG(uav1->getID()), 0.1);
-                double ng2 = Multi2One::N_G(node->getG(uav2->getID()), 0.1);
-
-                double ag1 = Multi2One::alphaG(node->getG(uav1->getID()), 0.4, 0.5, 10.0);
-                double ag2 = Multi2One::alphaG(node->getG(uav2->getID()), 0.4, 0.5, 10.0);
-                double s1  = (1.0 - ag1) * (1.0 - ng1) + ag1 * (1.0 - np1);
-                double s2  = (1.0 - ag2) * (1.0 - ng2) + ag2 * (1.0 - np2);
-                s1         = p1 >= 0.2 ? s1 : 1.0;
-                s2         = p2 >= 0.2 ? s2 : 1.0;
+                const double s1 = Score(node, uav1);
+                const double s2 = Score(node, uav2);
                 return s1 > s2;
             });
         }
@@ -128,32 +128,16 @@ namespace RendezvousAstar {
             double t_l      = 1.0;
             double t_before = -1000;
             for (const auto& uav : uavs_) {
-                double t = node->getG(uav->getID()) / 0.5; // uav speed :0.5
+                double t = node->getG(uav->getID()) / (0.5 + (0.2 * uav->getPower()));
                 t        = std::max({t, t_before + t_l, t_g});
                 cost     = std::max(cost, t + t_l);
                 t_before = t;
             }
+
             return cost;
         }
 
         bool Compare(const NodePtr& n1, const NodePtr& n2) const {
-            // double power        = 0.7;
-            // double vf           = 0.5;
-            // double vc           = 0.3;
-            // double hover_weight = 1.0, move_weight = 1.5;
-            // double gf1 = 0.0, gc1 = 0.0;
-            // double gf2 = 0.0, gc2 = 0.0;
-            // double time1 = 0.0;
-            // double time2 = 0.0;
-            // for (const auto& id : path_id_set) {
-            //     if (id > 0) {
-            //         time1 += (n1->getG(id) + G_before.at(id)) / vf;
-            //         time2 += (n2->getG(id) + G_before.at(id)) / vf;
-            //     } else {
-            //         time1 += n1->getG(id) / vc;
-            //         time2 += n2->getG(id) / vc;
-            //     }
-            // }
 
             auto UAVs = uavs_;
 
@@ -164,12 +148,6 @@ namespace RendezvousAstar {
             double cost2 = ComputeCost(n2);
 
             return cost1 < cost2;
-
-
-            // const double p1=gc1+gf1;
-            // const double p2=gc2+gf2;
-
-            // return time1 < time2;
         }
 
         void plan() {
@@ -252,7 +230,8 @@ namespace RendezvousAstar {
             }
             visualizer_.visualizeCommonSet(astar_->getCommonSet());
 
-            Eigen::Vector3i rendezvous_node;
+
+            NodePtr rendezvous_node;
             const auto time_end = std::chrono::high_resolution_clock::now();
             ROS_INFO("commonSet size: %lu", astar_->getCommonNum());
             ROS_INFO("multi2one time: %ld",
@@ -261,7 +240,10 @@ namespace RendezvousAstar {
             if (getRendezvous) {
                 try {
                     ROS_INFO("获取汇合点");
-                    rendezvous_node = rendezvous_future.get()->getPos();
+                    rendezvous_node = rendezvous_future.get();
+                    for (const auto& uav : uavs_) {
+                        ROS_INFO("UAV id: %d  Priority: %f", uav->getID(), Score(rendezvous_node, uav));
+                    }
                 } catch (const std::future_error& e) {
                     ROS_WARN("路径生成失败，未得到汇合点 %s", e.what());
                     return;
@@ -272,17 +254,17 @@ namespace RendezvousAstar {
             }
 
 
-            visualizer_.visualizeCommon(NodeMap::posI2D(rendezvous_node));
+            visualizer_.visualizeCommon(NodeMap::posI2D(rendezvous_node->getPos()));
             std::vector<std::vector<Eigen::Vector3d>> paths;
             for (const auto& uav : uavs_) {
                 const auto path =
-                    Astar::getRealPath(uav->getID(), uav->getPos(), rendezvous_node, NodeMap::getInstance());
+                    Astar::getRealPath(uav->getID(), uav->getPos(), rendezvous_node->getPos(), NodeMap::getInstance());
                 paths.push_back(path);
                 visualizer_.visualizePath(path, uav->getID());
             }
 
-            const auto ugv_path =
-                Astar::getRealPath(ugvs_[0]->getID(), ugvs_[0]->getPos(), rendezvous_node, NodeMap::getInstance());
+            const auto ugv_path = Astar::getRealPath(
+                ugvs_[0]->getID(), ugvs_[0]->getPos(), rendezvous_node->getPos(), NodeMap::getInstance());
             paths.push_back(ugv_path);
             visualizer_.visualizePath(ugv_path, ugvs_[0]->getID());
 
