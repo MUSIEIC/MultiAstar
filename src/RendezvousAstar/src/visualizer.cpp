@@ -35,9 +35,9 @@ void Visualizer::visualizeStartGoal(
         sphereMarkers.color.b = 0.00;
     }
     sphereMarkers.color.a                    = 1.00;
-    sphereMarkers.scale.x                    = radius * 2.0;
-    sphereMarkers.scale.y                    = radius * 2.0;
-    sphereMarkers.scale.z                    = radius * 2.0;
+    sphereMarkers.scale.x                    = radius;
+    sphereMarkers.scale.y                    = radius;
+    sphereMarkers.scale.z                    = radius;
     visualization_msgs::Marker sphereDeleter = sphereMarkers;
     sphereDeleter.action                     = visualization_msgs::Marker::DELETEALL;
 

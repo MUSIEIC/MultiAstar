@@ -93,7 +93,7 @@ namespace RendezvousAstar {
                 const Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, zGoal);
                 // const Eigen::Vector3d goal(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
                 if (NodeMap::query(goal) == 0) {
-                    Visualizer::getInstance(nh_).visualizeStartGoal(goal, 0.25, start_goal_.size(),start_nums_);
+                    Visualizer::getInstance(nh_).visualizeStartGoal(goal, config_.voxelWidth, start_goal_.size(),start_nums_);
                     start_goal_.emplace_back(goal);
                 } else {
                     ROS_WARN("Infeasible Position Selected !!!\n");

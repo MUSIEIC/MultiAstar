@@ -113,8 +113,9 @@ namespace RendezvousAstar {
          * @brief 带参数的构造函数
          * @param id 智能体ID
          * @param initial_pos 初始位置
+         * @param power 电量
          */
-        UAV(int32_t id, const Eigen::Vector3d& initial_pos, double power = 1.0);
+        UAV(int32_t id, const Eigen::Vector3d& initial_pos = Eigen::Vector3d::Zero(), double power = 1.0);
 
         /**
          * @brief 虚析构函数
@@ -175,8 +176,9 @@ namespace RendezvousAstar {
          * @brief 带参数的构造函数
          * @param id 智能体ID
          * @param initial_pos 初始位置
+         * @param power 表示电量
          */
-        UGV(int32_t id, const Eigen::Vector3d& initial_pos, double power = 1.0);
+        UGV(int32_t id, const Eigen::Vector3d& initial_pos = Eigen::Vector3d::Zero(), double power = 1.0);
 
         /**
          * @brief 虚析构函数
