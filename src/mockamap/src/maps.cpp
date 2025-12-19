@@ -1,11 +1,11 @@
 #include "maps.hpp"
 
+#include <Eigen/Core>
 #include <algorithm>
 #include <iostream>
 #include <random>
 #include <vector>
-
-#include <Eigen/Core>
+#include <yaml-cpp/yaml.h>
 
 #include "perlinnoise.hpp"
 
@@ -89,7 +89,8 @@ Maps::randomMapGenerate()
   pcl2ros();
 }
 
-void Maps::manualMap()
+void
+Maps::manualMap()
 /**
  *  manual map generation
  * 参数Vector4d: 障碍物左下角边缘x,y，x轴方向宽度，y轴方向宽度
@@ -97,26 +98,47 @@ void Maps::manualMap()
  */
 {
   std::vector<Eigen::Vector4d> obstacle;
-  double _resolution=1/info.scale;
-  Eigen::Vector4d offset(_resolution/2,_resolution/2,0,0);
-  // std::vector<pcl::PointXYZ> points;
-  obstacle.push_back(Eigen::Vector4d(-1.5, -1.5, 3.0, 0.5));
-  obstacle.push_back(Eigen::Vector4d(0.0, 0.0, 0.25, 1));
-  obstacle.push_back(Eigen::Vector4d(-0.5, 0.0, 1.25, 0.25));
-  std::vector<double> _height={1.5,2.0,2.0};
-  for(int i=0;i<=obstacle.size();i++)
+  std::vector<double>          heights;
+  double                       _resolution = 1 / info.scale;
+  Eigen::Vector4d              offset(_resolution / 2, _resolution / 2, 0, 0);
+
+  YAML::Node config = YAML::LoadFile(
+    "/home/haung/prog/MultiAstar/src/mockamap/config/obstacles.yaml");
+  const YAML::Node& obstacles = config["Obstacles"];
+  for (const auto& obs : obstacles)
   {
-    Eigen::Vector4d obs=obstacle[i]+offset;
-    int lnum=ceil(obs(2)/_resolution);
-    int wnum=ceil(obs(3)/_resolution);
-    int hnum=ceil(_height[i]/_resolution);
-    for(int j=0;j<lnum;j++)
+    // 读取位置信息
+    const YAML::Node& pos_node = obs["left_pos"];
+    Eigen::Vector4d   pos_data;
+
+    // 存储 x, y, length 和 width
+    pos_data(0) = pos_node[0].as<double>();
+    pos_data(1) = pos_node[1].as<double>();
+    pos_data(2) = obs["length"].as<double>();
+    pos_data(3) = obs["width"].as<double>();
+
+    // 存储 height
+    double height = obs["height"].as<double>();
+
+    obstacle.push_back(pos_data);
+    heights.push_back(height);
+  }
+
+  for (int i = 0; i <= obstacle.size(); i++)
+  {
+    Eigen::Vector4d obs  = obstacle[i] + offset;
+    int             lnum = ceil(obs(2) / _resolution);
+    int             wnum = ceil(obs(3) / _resolution);
+    int             hnum = ceil(heights[i] / _resolution);
+    for (int j = 0; j < lnum; j++)
     {
-      for(int k=0;k<wnum;k++)
+      for (int k = 0; k < wnum; k++)
       {
-        for(int l=0;l<hnum;l++)
+        for (int l = 0; l < hnum; l++)
         {
-          info.cloud->points.push_back(pcl::PointXYZ(obs(0)+j*_resolution,obs(1)+k*_resolution,l*_resolution));
+          info.cloud->points.push_back(pcl::PointXYZ(obs(0) + j * _resolution,
+                                                     obs(1) + k * _resolution,
+                                                     l * _resolution));
         }
       }
     }
@@ -131,28 +153,39 @@ void Maps::manualMap()
 void
 Maps::MapGenerate()
 {
-  // std::vector<double> obscenter_x={0.7,0.02,-0.18,-0.45,1.3,1,1,-0.72,-0.72,-0.35,-1.25,-1.13};
-  // std::vector<double> obscenter_y={-1.0,1.13,-0.18,-0.185,-1.36,0.485,0.18,0.43,0.17,-1.53,-0.48,1.37};
-  // std::vector<double> obscenter_h={0.6,0.6,0.3,0.3,0.6,0.6,0.6,0.3,0.3,0.3,0.3,0.3};
-  // std::vector<double> obscenter_w={0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1};
-    std::vector<double> obscenter_x={-1.0,-0.5,-0.3,-0.1,-1.0,-0.7,-0.5,-0.3,-0.1,-1.5,-1.5,-1.5,-1.5,-1.5,-0.1,-0.1,-0.1,-0.1,-0.1,0.5,1.0};
-  std::vector<double> obscenter_y={-0.2,-0.2,-0.2,-0.2,-1.5,-1.5,-1.5,-1.5,-1.5,-0.2,-0.5,-0.8,-1.0,-1.3,-0.2,-0.5,-0.8,-1.0,-1.3,0.5,0.5};
-  std::vector<double> obscenter_h={0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.6,0.6};
-  std::vector<double> obscenter_w={0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1};
+  // std::vector<double>
+  // obscenter_x={0.7,0.02,-0.18,-0.45,1.3,1,1,-0.72,-0.72,-0.35,-1.25,-1.13};
+  // std::vector<double>
+  // obscenter_y={-1.0,1.13,-0.18,-0.185,-1.36,0.485,0.18,0.43,0.17,-1.53,-0.48,1.37};
+  // std::vector<double>
+  // obscenter_h={0.6,0.6,0.3,0.3,0.6,0.6,0.6,0.3,0.3,0.3,0.3,0.3};
+  // std::vector<double>
+  // obscenter_w={0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1};
+  std::vector<double> obscenter_x = { -1.0, -0.5, -0.3, -0.1, -1.0, -0.7, -0.5,
+                                      -0.3, -0.1, -1.5, -1.5, -1.5, -1.5, -1.5,
+                                      -0.1, -0.1, -0.1, -0.1, -0.1, 0.5,  1.0 };
+  std::vector<double> obscenter_y = { -0.2, -0.2, -0.2, -0.2, -1.5, -1.5, -1.5,
+                                      -1.5, -1.5, -0.2, -0.5, -0.8, -1.0, -1.3,
+                                      -0.2, -0.5, -0.8, -1.0, -1.3, 0.5,  0.5 };
+  std::vector<double> obscenter_h = { 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3,
+                                      0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3,
+                                      0.3, 0.3, 0.3, 0.3, 0.6, 0.6 };
+  std::vector<double> obscenter_w = { 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+                                      0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+                                      0.1, 0.1, 0.1, 0.1, 0.1, 0.1 };
   // std::default_random_engine eng(info.seed);
 
   double _resolution = 1 / info.scale;
 
-  double _x_l = -(info.sizeX+0.2) / (2 * info.scale);
-  double _x_h = (info.sizeX+0.2) / (2 * info.scale);
-  double _y_l = -(info.sizeY+0.2) / (2 * info.scale);
-  double _y_h = (info.sizeY+0.2) / (2 * info.scale);
+  double _x_l = -(info.sizeX + 0.2) / (2 * info.scale);
+  double _x_h = (info.sizeX + 0.2) / (2 * info.scale);
+  double _y_l = -(info.sizeY + 0.2) / (2 * info.scale);
+  double _y_h = (info.sizeY + 0.2) / (2 * info.scale);
   double _h_l = 0;
   double _h_h = info.sizeZ / info.scale;
 
   double _w_l, _w_h;
   int    _ObsNum;
-  
 
   info.nh_private->param("width_min", _w_l, 0.6);
   info.nh_private->param("width_max", _w_h, 1.0);
@@ -206,25 +239,27 @@ Maps::MapGenerate()
         }
       }
   }
-    // 生成边界墙
-  for (double h = _h_l; h <= _h_h;h+=_resolution)
+  // 生成边界墙
+  for (double h = _h_l; h <= _h_h; h += _resolution)
   {
-    for (double x = _x_l; x <= _x_h; x += _resolution) { // 横向边界
-        pt_manual.x = x;
-        pt_manual.y = _y_l - _resolution; // 左侧边界低于地面一点
-        pt_manual.z = h;
-        info.cloud->points.push_back(pt_manual);
-        pt_manual.y = _y_h + _resolution; // 右侧边界高于地面一点
-        info.cloud->points.push_back(pt_manual);
+    for (double x = _x_l; x <= _x_h; x += _resolution)
+    { // 横向边界
+      pt_manual.x = x;
+      pt_manual.y = _y_l - _resolution; // 左侧边界低于地面一点
+      pt_manual.z = h;
+      info.cloud->points.push_back(pt_manual);
+      pt_manual.y = _y_h + _resolution; // 右侧边界高于地面一点
+      info.cloud->points.push_back(pt_manual);
     }
 
-    for (double y = _y_l; y <= _y_h; y += _resolution) { // 纵向边界
-        pt_manual.y = y;
-        pt_manual.x = _x_l - _resolution; // 前侧边界
-        pt_manual.z = h;
-        info.cloud->points.push_back(pt_manual);
-        pt_manual.x = _x_h + _resolution; // 后侧边界
-        info.cloud->points.push_back(pt_manual);
+    for (double y = _y_l; y <= _y_h; y += _resolution)
+    { // 纵向边界
+      pt_manual.y = y;
+      pt_manual.x = _x_l - _resolution; // 前侧边界
+      pt_manual.z = h;
+      info.cloud->points.push_back(pt_manual);
+      pt_manual.x = _x_h + _resolution; // 后侧边界
+      info.cloud->points.push_back(pt_manual);
     }
   }
   // 顶部和底部边界（如果需要的话，根据实际场景调整）

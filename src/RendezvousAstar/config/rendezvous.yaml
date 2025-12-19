@@ -4,9 +4,9 @@ InitMapFirst:            true
 
 TargetTopic:            '/move_base_simple/goal'
 
-DilateRadius:           0.5
+DilateRadius:           0.1
 
-VoxelWidth:              0.5
+VoxelWidth:              0.1
 
-MapBound:                [-25.0, 25.0, -25.0, 25.0, 0.0, 5.0]
+MapBound:                [-5.0, 5.0, -5.0, 5.0, 0.0, 2.0]
 

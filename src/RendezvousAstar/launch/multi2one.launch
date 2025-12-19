@@ -8,11 +8,11 @@
     <node pkg="mockamap" type="mockamap_node" name="mockamap_node" output="screen">
         <param name="seed" type="int" value="512"/>
         <param name="update_freq" type="double" value="1.0"/>
-        <param name="resolution" type="double" value="0.5"/>
-        <param name="x_length" type="int" value="50"/>
-        <param name="y_length" type="int" value="50"/>
-        <param name="z_length" type="int" value="5"/>
-        <param name="type" type="int" value="1"/>
+        <param name="resolution" type="double" value="0.1"/>
+        <param name="x_length" type="int" value="10"/>
+        <param name="y_length" type="int" value="10"/>
+        <param name="z_length" type="int" value="2"/>
+        <param name="type" type="int" value="5"/>  <!--5为根据yaml生成地图-->
         <param name="complexity" type="double" value="0.025"/>
         <param name="fill" type="double" value="0.3"/>
         <param name="fractal" type="int" value="1"/>
@@ -21,10 +21,10 @@
     </node>
 
     <node pkg="RendezvousAstar" type="multi2one" name="multi2one_searching_node" output="screen">
-        <param name="uav_num" type="int" value="6"/><!--use_yaml为true时为0，否则不应改为0 -->
+        <param name="uav_num" type="int" value="0"/><!--use_yaml为true时为0，否则不应改为0 -->
         <param name="ugv_num" type="int" value="1"/><!--目前只支持1个ugv-->
         <param name="use_more_directs" type="bool" value="true"/>
-        <param name="use_yaml" type="bool" value="false"/>
+        <param name="use_yaml" type="bool" value="true"/>
         <!--注意：false时，yaml中除位置参数外均生效，yaml中超出uav数量的部分忽略，不足则满电量构造-->
         <rosparam file="$(find RendezvousAstar)/config/rendezvous.yaml" command="load"/>
     </node>

@@ -120,9 +120,9 @@ namespace RendezvousAstar {
         }
 
         auto target = goal->getPos();
-        if (typeid(*agent) == typeid(UGV)) {
-            target.z() = 0;
-        }
+        // if (typeid(*agent) == typeid(UGV)) {
+        //     target.z() = 0;
+        // }
 
         auto state = STATE::searching;
 
@@ -145,7 +145,7 @@ namespace RendezvousAstar {
 
         now->setState(path_id, Node::STATE::INCLOSED);
 
-        // 如果当前节点被所有目标路径访问过且在地面层，则加入公共集合
+        // 如果当前节点被所有目标路径访问过，则加入公共集合
         if (isCommon(now, path_id_set)) {
             insertCommonSet(now);
         }

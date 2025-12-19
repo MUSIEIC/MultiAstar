@@ -15,7 +15,7 @@ namespace RendezvousAstar {
     }
 
     Agent::Agent(const int32_t id, Eigen::Vector3d initial_pos, const double power)
-        : id_(id), initial_pos_(std::move(initial_pos)), power_(power) {
+        : id_(id), real_pos_(std::move(initial_pos)), power_(power) {
         {
             std::lock_guard<std::mutex> lock(id_set_mutex_);
             if (id_set_.find(id_) != id_set_.end()) {
@@ -26,7 +26,7 @@ namespace RendezvousAstar {
             }
             id_set_.insert(id_);
         }
-        pos_ = NodeMap::posD2I(initial_pos_);
+        pos_ = NodeMap::posD2I(real_pos_);
         // auto node = NodeMap::getInstance()->getNode(pos_);
         // if (!node) {
         //     node = std::make_shared<Node>(id, nullptr, pos_);
@@ -40,7 +40,7 @@ namespace RendezvousAstar {
         return id_;
     }
     Eigen::Vector3d Agent::getInitialPos() const {
-        return initial_pos_;
+        return real_pos_;
     }
     Eigen::Vector3i Agent::getPos() const {
         std::shared_lock lock(mutex_);
@@ -54,11 +54,14 @@ namespace RendezvousAstar {
     void Agent::setPos(const Eigen::Vector3i& pos) {
         std::unique_lock lock(mutex_);
         pos_ = pos;
+        real_pos_ = NodeMap::posI2D(pos_);
     }
 
-    void Agent::setInitialPos(const Eigen::Vector3d& initial_pos) {
+
+    void Agent::setRealPos(const Eigen::Vector3d& initial_pos) {
         std::unique_lock lock(mutex_);
-        initial_pos_ = initial_pos;
+        real_pos_ = initial_pos;
+        pos_ = NodeMap::posD2I(real_pos_);
     }
     void Agent::setPower(const double power) {
         power_ = power;
@@ -152,8 +155,10 @@ namespace RendezvousAstar {
     }
 
 
-    UGV::UGV() : state_(INIT) {
+    UGV::UGV() : state_(INIT),high_real_(0.2) {
         std::lock_guard<std::mutex> lock(id_set_mutex_);
+        auto temp=NodeMap::posD2I(Eigen::Vector3d(.0,.0,high_real_));
+        high_=temp[2];
         setPos(pos_);
         if (id_ >= 0) {
             id_set_.erase(id_);
@@ -170,8 +175,10 @@ namespace RendezvousAstar {
         }
     }
 
-    UGV::UGV(int32_t id, const Eigen::Vector3d& initial_pos, const double power)
-        : Agent(id, initial_pos, power), state_(INIT) {
+    UGV::UGV(int32_t id, const Eigen::Vector3d& initial_pos,double high ,const double power)
+        : Agent(id, initial_pos, power), state_(INIT),high_real_(high) {
+        auto temp=NodeMap::posD2I(Eigen::Vector3d(.0,.0,high_real_));
+        high_=temp[2];
         setPos(pos_);
         std::lock_guard<std::mutex> lock(id_set_mutex_);
         if (id_ >= 0) {
@@ -193,7 +200,13 @@ namespace RendezvousAstar {
 
     void UGV::setPos(const Eigen::Vector3i& pos) {
         std::unique_lock lock(mutex_);
-        pos_ = Eigen::Vector3i(pos[0], pos[1], 0);
+        pos_ = Eigen::Vector3i(pos[0], pos[1], high_);
+        real_pos_ = NodeMap::posI2D(pos_);
+    }
+    void UGV::setRealPos(const Eigen::Vector3d& pos) {
+        std::unique_lock lock(mutex_);
+        real_pos_= Eigen::Vector3d(pos[0],pos[1],high_real_);
+        pos_ = NodeMap::posD2I(real_pos_);
     }
     UGV::STATE UGV::getState() const {
         std::shared_lock lock(mutex_);
@@ -227,6 +240,33 @@ namespace RendezvousAstar {
         std::unique_lock lock(mutex_);
         state_ = state;
     }
+    void UGV::setRealHigh(const double high) {
+        std::unique_lock lock(mutex_);
+        high_real_=high;
+        const auto temp=NodeMap::posD2I(Eigen::Vector3d(.0,.0,high_real_));
+        high_=temp[2];
+        pos_.z()=high_;
+        real_pos_.z()=high_real_;
+    }
+
+    void UGV::setHigh(const int high) {
+        std::unique_lock lock(mutex_);
+        high_=high;
+        const auto temp=NodeMap::posI2D(Eigen::Vector3i(.0,.0,high_));
+        high_real_=temp[2];
+        pos_.z()=high_;
+        real_pos_.z()=high_real_;
+    }
+    double UGV::getRealHigh() const {
+        std::shared_lock lock(mutex_);
+        return high_real_;
+    }
+
+    int UGV::getHigh() const {
+        std::shared_lock lock(mutex_);
+        return high_;
+    }
+
     bool UGV::openListEmpty() {
         std::shared_lock lock(mutex_);
         return open_list_.empty();

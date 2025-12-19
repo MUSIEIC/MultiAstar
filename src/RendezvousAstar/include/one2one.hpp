@@ -22,7 +22,7 @@ namespace RendezvousAstar {
             auto node_map = NodeMap::getInstance();
             for (const auto& d : Astar::direct2d8_) {
                 Eigen::Vector3i next_point = {
-                    point[0] + static_cast<int32_t>(d[0]), point[1] + static_cast<int32_t>(d[1]), 0};
+                    point[0] + static_cast<int32_t>(d[0]), point[1] + static_cast<int32_t>(d[1]), point[2]};
                 const auto node = node_map->getNode(next_point);
                 if (!NodeMap::query(next_point)) {
                     if (!node || node->getState(path_id_set_[0]) != Node::STATE::INCOMMONSET) {

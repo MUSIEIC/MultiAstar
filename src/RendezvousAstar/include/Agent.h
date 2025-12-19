@@ -62,7 +62,7 @@ namespace RendezvousAstar {
          * @brief 设置初始位置
          * @param initial_pos 新的初始位置
          */
-        void setInitialPos(const Eigen::Vector3d& initial_pos);
+        virtual void setRealPos(const Eigen::Vector3d& initial_pos);
 
         void setPower(const double power);
 
@@ -80,7 +80,7 @@ namespace RendezvousAstar {
     protected:
         static std::unordered_set<int32_t> id_set_; ///< 存储已使用的ID集合，防止重复ID
         int32_t id_; ///< 智能体唯一标识符
-        Eigen::Vector3d initial_pos_; ///< 智能体初始位置（三维浮点坐标）
+        Eigen::Vector3d real_pos_; ///< 智能体初始位置（三维浮点坐标）
         Eigen::Vector3i pos_; ///< 智能体当前位置（三维整数坐标）
         mutable std::shared_mutex mutex_;
         static std::mutex id_set_mutex_;
@@ -178,7 +178,7 @@ namespace RendezvousAstar {
          * @param initial_pos 初始位置
          * @param power 表示电量
          */
-        UGV(int32_t id, const Eigen::Vector3d& initial_pos = Eigen::Vector3d::Zero(), double power = 1.0);
+        UGV(int32_t id, const Eigen::Vector3d& initial_pos = Eigen::Vector3d::Zero(),double high = 0.2,double power = 1.0);
 
         /**
          * @brief 虚析构函数
@@ -200,11 +200,21 @@ namespace RendezvousAstar {
          */
         void setPos(const Eigen::Vector3i& pos) override;
 
+        void setRealPos(const Eigen::Vector3d& pos) override;
+
         /**
          * @brief 设置当前状态
          * @param state 新的状态
          */
         void setState(const STATE& state);
+
+        void setRealHigh(double  high);
+
+        void setHigh(int high);
+
+        double getRealHigh() const;
+
+        int getHigh() const;
 
         bool openListEmpty() override;
 
@@ -219,6 +229,8 @@ namespace RendezvousAstar {
     private:
         STATE state_; ///< UGV当前状态
         Queue open_list_;
+        double high_real_;
+        int  high_;
     };
 
 } // namespace RendezvousAstar

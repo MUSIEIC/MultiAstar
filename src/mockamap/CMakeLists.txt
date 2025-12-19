@@ -7,10 +7,11 @@ add_compile_options(-std=c++14)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+find_package(yaml-cpp REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  pcl_ros
-  pcl_conversions
+        roscpp
+        pcl_ros
+        pcl_conversions
 )
 
 ## System dependencies are found with CMake's conventions
@@ -103,10 +104,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-#  LIBRARIES mockamap
-  CATKIN_DEPENDS roscpp pcl_ros pcl_conversions
-#  DEPENDS system_lib
+        INCLUDE_DIRS include
+        #  LIBRARIES mockamap
+        CATKIN_DEPENDS roscpp pcl_ros pcl_conversions
+        #  DEPENDS system_lib
 )
 
 ###########
@@ -116,8 +117,8 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
+        include
+        ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -136,7 +137,7 @@ include_directories(
 file(GLOB ${PROJECT_NAME}_SRCS src/*.cpp)
 
 add_executable(${PROJECT_NAME}_node
-    ${${PROJECT_NAME}_SRCS})
+        ${${PROJECT_NAME}_SRCS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -149,9 +150,10 @@ add_executable(${PROJECT_NAME}_node
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(${PROJECT_NAME}_node
-   ${catkin_LIBRARIES}
- )
+target_link_libraries(${PROJECT_NAME}_node
+        ${catkin_LIBRARIES}
+        ${YAML_CPP_LIBRARIES}
+)
 
 #############
 ## Install ##
