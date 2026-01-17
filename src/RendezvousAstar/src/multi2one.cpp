@@ -22,7 +22,7 @@ namespace RendezvousAstar {
         Multi2One(const std::vector<Eigen::Vector3d>& uav_pos, const std::vector<Eigen::Vector3d>& ugv_pos,
             const ros::NodeHandle& nh)
             : nh_(nh), uav_num_(uav_pos.size()), ugv_num_(ugv_pos.size()), astar_(std::make_shared<Astar>()),
-              use_more_directs_(true), visualizer_(Visualizer::getInstance(nh_)),use_yaml_(false) {
+              use_more_directs_(true), visualizer_(Visualizer::getInstance(nh_)), use_yaml_(false) {
             ros::NodeHandle("~").getParam("use_more_directs", use_more_directs_);
             ros::NodeHandle("~").getParam("use_yaml", use_yaml_);
             Eigen::Vector3i sum = {0, 0, 0};
@@ -44,7 +44,7 @@ namespace RendezvousAstar {
                 if (use_yaml_) {
                     visualizer_.visualizeStartGoal(ugv_pos[i], 0.25, j, uavs_.size());
                 }
-                ugvs_.emplace_back(std::make_shared<UGV>(-(i + 1), ugv_pos[i],0.2));
+                ugvs_.emplace_back(std::make_shared<UGV>(-(i + 1), ugv_pos[i], 0.2));
                 ugv_states_[ugvs_[i]->getID()] = Astar::STATE::searching;
             }
             center_    = sum / uav_num_;
@@ -76,7 +76,7 @@ namespace RendezvousAstar {
             const YAML::Node& UAVs = config["UAVs"];
             int cnt                = 0;
             if (use_yaml_) {
-                uav_num_=UAVs.size();
+                uav_num_ = UAVs.size();
             }
             for (const auto& uav : UAVs) {
                 if (++cnt > uav_num_) {
@@ -129,12 +129,12 @@ namespace RendezvousAstar {
         }
 
         double computeCost(const NodePtr& node) const {
-            double t_g      = node->getG(ugvs_[0]->getID()) / 0.3; // ugv speed :0.3
+            double t_g      = node->getG(ugvs_[0]->getID()) / 0.4; // ugv speed :0.3
             double cost     = 0.0;
             double t_l      = 1.0;
             double t_before = -1000;
             for (const auto& uav : uavs_) {
-                double t = node->getG(uav->getID()) / (0.5 + (0.2 * uav->getPower()));
+                double t = node->getG(uav->getID()) / (0.5 + (0.3 * uav->getPower()));
                 t        = std::max({t, t_before + t_l, t_g});
                 cost     = std::max(cost, t + t_l);
                 t_before = t;
@@ -245,8 +245,11 @@ namespace RendezvousAstar {
 
             if (getRendezvous) {
                 try {
-                    ROS_INFO("获取汇合点");
                     rendezvous_node = rendezvous_future.get();
+                    ROS_INFO("获取汇合点: [%d %d %d] real: [%.2f %.2f %.2f] ", rendezvous_node->getPos().x(),
+                        rendezvous_node->getPos().y(), rendezvous_node->getPos().z(),
+                        NodeMap::posI2D(rendezvous_node->getPos()).x(), NodeMap::posI2D(rendezvous_node->getPos()).y(),
+                        NodeMap::posI2D(rendezvous_node->getPos()).z());
                     for (const auto& uav : uavs_) {
                         ROS_INFO("UAV id: %d  Priority: %f", uav->getID(), score(rendezvous_node, uav));
                     }
@@ -265,16 +268,16 @@ namespace RendezvousAstar {
             for (const auto& uav : uavs_) {
                 auto path =
                     Astar::getRealPath(uav->getID(), uav->getPos(), rendezvous_node->getPos(), NodeMap::getInstance());
-                std::reverse(path.begin(),path.end());
-                path[0]=uav->getInitialPos();
-                path.back()=NodeMap::posI2D(rendezvous_node->getPos());
-                paths[uav->getID()]=path;
+                std::reverse(path.begin(), path.end());
+                path[0]             = uav->getInitialPos();
+                path.back()         = NodeMap::posI2D(rendezvous_node->getPos());
+                paths[uav->getID()] = path;
                 visualizer_.visualizePath(path, uav->getID());
             }
 
             const auto ugv_path = Astar::getRealPath(
                 ugvs_[0]->getID(), ugvs_[0]->getPos(), rendezvous_node->getPos(), NodeMap::getInstance());
-                paths[ugvs_[0]->getID()]=ugv_path;
+            paths[ugvs_[0]->getID()] = ugv_path;
             visualizer_.visualizePath(ugv_path, ugvs_[0]->getID());
 
             for (const auto& path : paths) {

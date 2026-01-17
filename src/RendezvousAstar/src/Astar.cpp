@@ -139,9 +139,9 @@ namespace RendezvousAstar {
             return state;
         }
 
-        if (computeH(now->getPos(), desire_pos) >= 10) {
-            state = STATE::beyond_scope;
-        }
+        // if (computeH(now->getPos(), desire_pos) >= 10) {
+        //     state = STATE::beyond_scope;
+        // }
 
         now->setState(path_id, Node::STATE::INCLOSED);
 

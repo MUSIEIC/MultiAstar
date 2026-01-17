@@ -35,9 +35,9 @@ void Visualizer::visualizeStartGoal(
         sphereMarkers.color.b = 0.00;
     }
     sphereMarkers.color.a                    = 1.00;
-    sphereMarkers.scale.x                    = radius;
-    sphereMarkers.scale.y                    = radius;
-    sphereMarkers.scale.z                    = radius;
+    sphereMarkers.scale.x                    = radius / 2;
+    sphereMarkers.scale.y                    = radius / 2;
+    sphereMarkers.scale.z                    = radius / 2;
     visualization_msgs::Marker sphereDeleter = sphereMarkers;
     sphereDeleter.action                     = visualization_msgs::Marker::DELETEALL;
 
@@ -75,8 +75,9 @@ void Visualizer::visualizePath(const std::vector<Eigen::Vector3d>& route, const 
         routeMarker.color.b = 1.00;
     }
     routeMarker.color.a = 1.00;
-    routeMarker.scale.x = 0.1;
-
+    routeMarker.scale.x = 0.3;
+    routeMarker.scale.y = 0.3;
+    routeMarker.scale.z = 0.3;
 
     if (route.size() > 0) {
         bool first = true;
@@ -114,9 +115,8 @@ void Visualizer::visualizeCommon(const Eigen::Vector3d& common) const {
     p.point.z         = common.z();
     commonPub_.publish(p);
 }
-
 void Visualizer::visualizeCommonSet(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& common_set) const {
-    visualization_msgs::Marker comarker;
+    visualization_msgs::Marker comarker, comarker2;
     geometry_msgs::Point p;
     comarker.header.frame_id = "odom";
     comarker.ns              = "common_set";
@@ -139,4 +139,42 @@ void Visualizer::visualizeCommonSet(const std::vector<std::shared_ptr<Rendezvous
         comarker.points.push_back(p);
     }
     commonSetPub_.publish(comarker);
+}
+
+void Visualizer::visualizeCommonSet(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& common_set,
+    const std::vector<std::shared_ptr<RendezvousAstar::Node>>& nodes) const {
+    visualization_msgs::Marker comarker, comarker2;
+    geometry_msgs::Point p;
+    comarker.header.frame_id = "odom";
+    comarker.ns              = "common_set";
+    comarker.id              = 0;
+    comarker.type            = visualization_msgs::Marker::CUBE_LIST;
+    comarker.action          = visualization_msgs::Marker::ADD;
+    comarker.scale.x         = config_->voxelWidth;
+    comarker.scale.y         = config_->voxelWidth;
+    comarker.scale.z         = config_->voxelWidth;
+    comarker.color.r         = 233;
+    comarker.color.g         = 185;
+    comarker.color.b         = 110;
+    comarker.color.a         = 0.4;
+
+    comarker2         = comarker;
+    comarker2.id      = 1;
+    comarker2.color.a = 0.8;
+    for (const auto& s : common_set) {
+        auto rs = RendezvousAstar::NodeMap::posI2D(s->getPos());
+        p.x     = rs.x();
+        p.y     = rs.y();
+        p.z     = rs.z();
+        comarker.points.push_back(p);
+    }
+    for (const auto &s : nodes) {
+        auto rs = RendezvousAstar::NodeMap::posI2D(s->getPos());
+        p.x = rs.x();
+        p.y = rs.y();
+        p.z = rs.z();
+        comarker2.points.push_back(p);
+    }
+    commonSetPub_.publish(comarker);
+    commonSetPub_.publish(comarker2);
 }
