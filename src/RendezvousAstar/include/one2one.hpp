@@ -125,8 +125,9 @@ namespace RendezvousAstar {
             int cnt                               = 0;
 
             //--------------init----------------------------------------------------------
-            astar_->setThreshold(100);
-
+            astar_->setThreshold(50);
+            uav_->reset();
+            ugv_->reset();
 
             //----------------搜索--------------------------------------------------------------------------
             const auto time_begin = std::chrono::high_resolution_clock::now();
