@@ -154,13 +154,13 @@ namespace RendezvousAstar {
             state = STATE::reached;
         }
 
-        // 判断公共节点数量是否超过阈值
-        if (getCommonNum() >= threshold_) {
-            if (state == STATE::reached) {
-                return STATE::reached_and_common;
-            }
-            state = STATE::common_over_threshold;
-        }
+        // // 判断公共节点数量是否超过阈值
+        // if (getCommonNum() >= threshold_) {
+        //     if (state == STATE::reached) {
+        //         return STATE::reached_and_common;
+        //     }
+        //     state = STATE::common_over_threshold;
+        // }
 
 
         // 遍历当前节点的所有邻居节点
@@ -188,7 +188,8 @@ namespace RendezvousAstar {
             if (now->getState(goal->getID()) == Node::STATE::INCLOSED) {
                 nh = now->getG(goal->getID());
             } else {
-                nh = 0.5 * computeH(node->getPos(), desire_pos) + 0.5 * computeH(node->getPos(), target);
+                // nh = 0.5 * computeH(node->getPos(), desire_pos) + 0.5 * computeH(node->getPos(), target);
+                nh = computeH(node->getPos(), desire_pos) ;
             }
 
 
@@ -200,7 +201,13 @@ namespace RendezvousAstar {
                     {1.02 * nh + ng, static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz)});
             }
         }
-
+        // 判断公共节点数量是否超过阈值
+        if (getCommonNum() >= threshold_) {
+            if (state == STATE::reached) {
+                return STATE::reached_and_common;
+            }
+            state = STATE::common_over_threshold;
+        }
         return state;
     }
 

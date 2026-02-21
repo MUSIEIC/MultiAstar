@@ -53,8 +53,8 @@ namespace RendezvousAstar {
         }
 
         static double Cost(const std::shared_ptr<Node>& n,const std::vector<int32_t>& path_id_set) {
-            double power        = 0.7;
-            double vf           = 0.5 * power * power + 0.5;
+            double power        = 1.0;
+            double vf           = 0.5 * power  + 0.7;
             double vc           = 0.5;
             double hover_weight = 1.0, move_weight = 1.0;
             double gf = 0.0, gc = 0.0;

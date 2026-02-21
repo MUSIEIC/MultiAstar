@@ -21,7 +21,7 @@ namespace RendezvousAstar {
             std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
         const auto path = Astar::getRealPath(1, agent->getPos(), e_agent->getPos(), NodeMap::getInstance());
         ROS_INFO("PathSearch: Astar state: %d,path size: %lu", state, path.size());
-        Visualizer::getInstance(nh).visualizePath(path, 0);
+        Visualizer::getInstance(nh).visualizePath(path, 1);
         // Visualizer::getInstance(nh).visualizeCommonSet(astar.getCommonSet());
     }
 } // namespace RendezvousAstar
