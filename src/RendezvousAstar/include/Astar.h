@@ -14,7 +14,8 @@ namespace RendezvousAstar {
          * @param threshold 阈值，用于判断公共点数量是否足够
          * @param step 步数限制
          */
-        explicit Astar(const int32_t threshold = 20, const int32_t step = 20) : threshold_(threshold), step_(step) {}
+        explicit Astar(const int32_t threshold = 20, const int32_t step = 20)
+            : threshold_(threshold), step_(step) {}
 
         /**
          * @brief 析构函数
@@ -40,12 +41,12 @@ namespace RendezvousAstar {
          * @param target 目标点坐标
          * @param desire_pos
          * @param path_id 路径ID
-         * @param path_id_set commontset判定id集合
+         * @param ugv_id commontset判定id集合
          * @param use_more_directs 是否采用更多扩展方向
          * @return 当前搜索状态
          */
         STATE runOnce(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target, const Eigen::Vector3i& desire_pos,
-            int32_t path_id, const std::vector<int32_t>& path_id_set, bool use_more_directs = true);
+            int32_t path_id, int32_t ugv_id, bool use_more_directs = true);
 
         /**
          * @brief 运行完整的A*算法
@@ -53,13 +54,13 @@ namespace RendezvousAstar {
          * @param target 目标点坐标
          * @param deirse_pos
          * @param path_id 路径ID
-         * @param path_id_set commontset判定id集合
+         * @param ugv_id commontset判定id集合
          * @param end_condition 终止条件
          * @param use_more_directs 是否采用更多扩展方向
          * @return 最终搜索状态
          */
         STATE run(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target, const Eigen::Vector3i& deirse_pos,
-            int32_t path_id, const std::vector<int32_t>& path_id_set, const std::function<bool(STATE&)>& end_condition,
+            int32_t path_id, int32_t ugv_id, const std::function<bool(STATE&)>& end_condition,
             bool use_more_directs = true);
 
         /**
@@ -102,7 +103,9 @@ namespace RendezvousAstar {
 
         // 获取公共点数量
 
-        static bool isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set);
+        bool isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set);
+
+        void setCommon(const std::shared_ptr<Node>& node,int32_t ugv_id);
 
         /// 3D环境下的移动方向和代价
         static std::vector<std::array<double, 4>> direct3d26_;
@@ -127,26 +130,50 @@ namespace RendezvousAstar {
             common_set_.clear();
         }
 
-        const std::shared_ptr<Node>& sortCommonSet(
-            const std::function<bool(const std::shared_ptr<Node>&, const std::shared_ptr<Node>&)>& compare) {
-            std::unique_lock<std::shared_mutex> lock(mutex_);
-            sort(common_set_.begin(), common_set_.end(), compare);
-            return *common_set_.begin();
-        }
+        // const std::shared_ptr<Node>& sortCommonSet(
+        //     const std::function<bool(const std::shared_ptr<Node>&, const std::shared_ptr<Node>&)>& compare) {
+        //     std::unique_lock<std::shared_mutex> lock(mutex_);
+        //     sort(common_set_.begin(), common_set_.end(), compare);
+        //     return *common_set_.begin();
+        // }
 
-        void insertCommonSet(std::shared_ptr<Node> node) {
-            std::unique_lock<std::shared_mutex> lock(mutex_);
-            common_set_.emplace_back(node);
+        void insertCommonSet(const std::shared_ptr<Node>& node, const int32_t num) {
+            std::unique_lock lock(mutex_);
+            common_set_[num].emplace_back(node);
         }
 
         auto getCommonSet() {
-            std::shared_lock<std::shared_mutex> lock(mutex_);
+            std::shared_lock lock(mutex_);
             return common_set_;
         }
 
+        auto getCommonSet(const int32_t num) {
+            std::shared_lock lock(mutex_);
+            return common_set_[num];
+        }
+
+        auto getTopCommonSet() {
+            std::shared_lock lock(mutex_);
+            return common_set_[id_in_ugv_.size()];
+        }
+
+        void resetIDSet() {
+            id_in_ugv_.clear();
+        }
+
+        int32_t getIdNumInUgv() const {
+            std::shared_lock lock(mutex_);
+            return id_in_ugv_.size();
+        }
+
+        auto getIdInUgv() const {
+            std::shared_lock lock(mutex_);
+            return id_in_ugv_;
+        }
 
     private:
-        std::vector<std::shared_ptr<Node>> common_set_;
+        std::unordered_map<int32_t, std::vector<std::shared_ptr<Node>>> common_set_;
+        std::unordered_set<int32_t> id_in_ugv_; ///< 可与无人车汇合的id数
         int32_t threshold_; ///< 阈值
         int32_t step_; ///< 步数限制
         mutable std::shared_mutex mutex_;

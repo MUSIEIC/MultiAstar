@@ -139,6 +139,16 @@ namespace RendezvousAstar {
         std::shared_lock lock(mutex_);
         return path_id_;
     }
+    bool Node::inCommonSet(const int32_t num, const int32_t ugv_id) const {
+        std::shared_lock lock(mutex_);
+        if (path_id_.find(ugv_id) == path_id_.end()) {
+            ROS_WARN("Node::inCommonSet:  节点不在UGV中");
+            return false;
+        }
+        if (state_.at(ugv_id)!=INCLOSED)
+            return false;
+        return num<=getClosedNum();
+    }
 
 
 } // namespace RendezvousAstar

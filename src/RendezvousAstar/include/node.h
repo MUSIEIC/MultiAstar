@@ -19,7 +19,7 @@ namespace RendezvousAstar {
     public:
         static std::atomic<int32_t> version_;
 
-        enum STATE { UNUSED, INOPEN, INCLOSED, INCOMMONSET };
+        enum STATE { UNUSED, INOPEN, INCLOSED,};// INCOMMONSET };
         /**
          * @brief 构造函数，使用坐标和路径ID初始化节点
          * @param pathID 路径标识符
@@ -112,6 +112,27 @@ namespace RendezvousAstar {
         bool queryID(int32_t id) const;
 
         std::unordered_set<int32_t> getPathSet() const;
+
+        int32_t getClosedNum()const {
+            std::shared_lock lock(mutex_);
+            int32_t cnt=0;
+            for (const auto &[fst,sed]:state_) {
+                if (sed== INCLOSED)
+                    ++cnt;
+            }
+            return cnt;
+        }
+        std::vector<int32_t> getClosedID() const {
+            std::shared_lock lock(mutex_);
+            std::vector<int32_t> ans;
+            for (const auto &[fst,sed]:state_) {
+                if (sed== INCLOSED)
+                    ans.push_back(fst);
+            }
+            return ans;
+        }
+
+        bool inCommonSet(const int32_t num,const int32_t ugv_id) const;
 
     private:
         // 节点的三维坐标位置

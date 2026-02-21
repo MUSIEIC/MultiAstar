@@ -88,27 +88,40 @@ namespace RendezvousAstar {
     }
 
 
-    bool Astar::isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set) {
-        if (path_id_set.empty()) {
-            ROS_WARN("Astar::isCommon: path_id_set为空");
-            return false;
-        }
-        bool ret = true;
-        for (const auto& id : path_id_set) {
-            ret &= node->queryID(id) && node->getState(id) == Node::STATE::INCLOSED;
-        }
-        if (ret) {
-            for (const auto& id : path_id_set) {
-                node->setState(id, Node::STATE::INCOMMONSET);
+    // bool Astar::isCommon(const std::shared_ptr<Node>& node, const std::vector<int32_t>& path_id_set) {
+    //     if (path_id_set.empty()) {
+    //         ROS_WARN("Astar::isCommon: path_id_set为空");
+    //         return false;
+    //     }
+    //     bool ret = true;
+    //     for (const auto& id : path_id_set) {
+    //         ret &= node->queryID(id) && node->getState(id) == Node::STATE::INCLOSED;
+    //     }
+    //     if (ret) {
+    //         for (const auto& id : path_id_set) {
+    //             node->setState(id, Node::STATE::INCOMMONSET);
+    //         }
+    //     }
+    //     return ret;
+    // }
+
+    void Astar::setCommon(const std::shared_ptr<Node>& node, const int32_t ugv_id) {
+        if (node->getState(ugv_id) == Node::STATE::INCLOSED) {
+            auto id_set = node->getClosedID();
+            if (id_set.size() > 1) {
+                for (const auto id : id_set) {
+                    if (id<0)
+                        continue;
+                    id_in_ugv_.insert(id);
+                }
+                insertCommonSet(node, id_set.size()-1);
             }
         }
-        return ret;
     }
 
     //  执行一次A*算法迭代
     Astar::STATE Astar::runOnce(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& goal,
-        const Eigen::Vector3i& desire_pos, const int32_t path_id, const std::vector<int32_t>& path_id_set,
-        const bool use_more_directs) {
+        const Eigen::Vector3i& desire_pos, const int32_t path_id, const int32_t ugv_id, const bool use_more_directs) {
 
         auto nodeMap = NodeMap::getInstance();
         // 根据agent类型选择2D或3D方向数组
@@ -135,7 +148,7 @@ namespace RendezvousAstar {
         auto [f, x, y, z] = agent->openListPopTop();
         auto now          = nodeMap->getNode(Eigen::Vector3i(x, y, z));
 
-        if (now->getState(path_id) == Node::STATE::INCLOSED || now->getState(path_id) == Node::STATE::INCOMMONSET) {
+        if (now->getState(path_id) == Node::STATE::INCLOSED ) {
             return state;
         }
 
@@ -146,9 +159,11 @@ namespace RendezvousAstar {
         now->setState(path_id, Node::STATE::INCLOSED);
 
         // 如果当前节点被所有目标路径访问过，则加入公共集合
-        if (isCommon(now, path_id_set)) {
-            insertCommonSet(now);
-        }
+        // if (isCommon(now, path_id_set)) {
+        //     insertCommonSet(now);
+        // }
+
+        setCommon(now, ugv_id);
         // 判断是否到达目标点
         if (now->getPos() == target) {
             state = STATE::reached;
@@ -178,8 +193,7 @@ namespace RendezvousAstar {
             //     node = std::make_shared<Node>(path_id, now, nx, ny, nz);
             //     nodeMap->addNode(node);
             // }
-            if (node->getState(path_id) == Node::STATE::INCLOSED
-                || node->getState(path_id) == Node::STATE::INCOMMONSET) {
+            if (node->getState(path_id) == Node::STATE::INCLOSED) {
                 continue;
             }
 
@@ -189,7 +203,7 @@ namespace RendezvousAstar {
                 nh = now->getG(goal->getID());
             } else {
                 // nh = 0.5 * computeH(node->getPos(), desire_pos) + 0.5 * computeH(node->getPos(), target);
-                nh = computeH(node->getPos(), desire_pos) ;
+                nh = computeH(node->getPos(), desire_pos);
             }
 
 
@@ -213,7 +227,7 @@ namespace RendezvousAstar {
 
     // 运行完整的A*算法直到满足结束条件
     Astar::STATE Astar::run(std::shared_ptr<Agent>& agent, std::shared_ptr<Agent>& target,
-        const Eigen::Vector3i& desire_pos, const int32_t path_id, const std::vector<int32_t>& path_id_set,
+        const Eigen::Vector3i& desire_pos, const int32_t path_id, const int32_t ugv_id,
         const std::function<bool(STATE&)>& end_condition, const bool use_more_directs) {
 
         // 初始化
@@ -227,16 +241,16 @@ namespace RendezvousAstar {
         uint32_t cnt = 0;
         while (!end_condition(state_now)) {
             ++cnt;
-            state_now     = runOnce(agent, target, desire_pos, path_id, path_id_set, use_more_directs);
+            state_now     = runOnce(agent, target, desire_pos, path_id, ugv_id, use_more_directs);
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::high_resolution_clock::now() - begin_time);
 
             // 如果超过5秒则超时退出
-            if (duration >= std::chrono::milliseconds(10000)) {
-                state_now = STATE::over_time;
-                ROS_WARN("Rendezvous::Astar::run: overtime >=10s");
-                break;
-            }
+            // if (duration >= std::chrono::milliseconds(10000)) {
+            //     state_now = STATE::over_time;
+            //     ROS_WARN("Rendezvous::Astar::run: overtime >=10s");
+            //     break;
+            // }
             if (state_now == STATE::map_search_done) {
                 break;
             }
