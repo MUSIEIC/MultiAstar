@@ -7,6 +7,27 @@
 #include <shared_mutex>
 #include <vector>
 namespace RendezvousAstar {
+
+    struct NodePtrHash {
+        std::size_t operator()(const std::shared_ptr<Node>& node) const {
+            if (!node) return 0;
+            const auto& pos = node->getPos();
+            std::size_t seed = 0;
+            seed ^= std::hash<int>{}(pos.x()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= std::hash<int>{}(pos.y()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            seed ^= std::hash<int>{}(pos.z()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+            return seed;
+        }
+    };
+
+    // 为std::shared_ptr<Node>定义相等比较函数
+    struct NodePtrEqual {
+        bool operator()(const std::shared_ptr<Node>& lhs, const std::shared_ptr<Node>& rhs) const {
+            if (!lhs || !rhs) return lhs == rhs;
+            return lhs->getPos() == rhs->getPos();
+        }
+    };
+
     class Astar {
     public:
         /**
@@ -139,7 +160,7 @@ namespace RendezvousAstar {
 
         void insertCommonSet(const std::shared_ptr<Node>& node, const int32_t num) {
             std::unique_lock lock(mutex_);
-            common_set_[num].emplace_back(node);
+            common_set_[num].insert(node);
         }
 
         auto getCommonSet() {
@@ -172,7 +193,7 @@ namespace RendezvousAstar {
         }
 
     private:
-        std::unordered_map<int32_t, std::vector<std::shared_ptr<Node>>> common_set_;
+        std::unordered_map<int32_t, std::unordered_set<std::shared_ptr<Node>,NodePtrHash,NodePtrEqual>> common_set_;
         std::unordered_set<int32_t> id_in_ugv_; ///< 可与无人车汇合的id数
         int32_t threshold_; ///< 阈值
         int32_t step_; ///< 步数限制

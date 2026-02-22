@@ -8,11 +8,11 @@
     <node pkg="mockamap" type="mockamap_node" name="mockamap_node" output="screen">
         <param name="seed" type="int" value="512"/>
         <param name="update_freq" type="double" value="1.0"/>
-        <param name="resolution" type="double" value="0.1"/>
+        <param name="resolution" type="double" value="0.5"/>
         <param name="x_length" type="int" value="50"/>
         <param name="y_length" type="int" value="50"/>
         <param name="z_length" type="int" value="5"/>
-        <param name="type" type="int" value="5"/>  <!--5为根据yaml生成地图-->
+        <param name="type" type="int" value="1"/>  <!--5为根据yaml生成地图-->
         <param name="complexity" type="double" value="0.025"/>
         <param name="fill" type="double" value="0.3"/>
         <param name="fractal" type="int" value="1"/>

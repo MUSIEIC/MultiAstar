@@ -34,8 +34,10 @@ public:
     void visualizeStartGoal(const Eigen::Vector3d& center, const double& radius, int sg, int change_color) const;
     void visualizePath(const std::vector<Eigen::Vector3d>& route, const int32_t& id) const;
     void visualizeCommon(const Eigen::Vector3d& common) const;
-    void visualizeCommonSet(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& common_set) const;
-    void visualizeCommonSet(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& common_set,
+    void visualizeCommonSet(const std::unordered_set<std::shared_ptr<RendezvousAstar::Node>,
+        RendezvousAstar::NodePtrHash, RendezvousAstar::NodePtrEqual>& common_set) const;
+    void visualizeCommonSet(const std::unordered_set<std::shared_ptr<RendezvousAstar::Node>,
+                                RendezvousAstar::NodePtrHash, RendezvousAstar::NodePtrEqual>& common_set,
         const std::vector<std::shared_ptr<RendezvousAstar::Node>>& nodes) const;
 };
 

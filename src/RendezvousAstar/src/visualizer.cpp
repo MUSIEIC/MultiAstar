@@ -115,7 +115,8 @@ void Visualizer::visualizeCommon(const Eigen::Vector3d& common) const {
     p.point.z         = common.z();
     commonPub_.publish(p);
 }
-void Visualizer::visualizeCommonSet(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& common_set) const {
+void Visualizer::visualizeCommonSet(const std::unordered_set<std::shared_ptr<RendezvousAstar::Node>,
+    RendezvousAstar::NodePtrHash, RendezvousAstar::NodePtrEqual>& common_set) const {
     visualization_msgs::Marker comarker, comarker2;
     geometry_msgs::Point p;
     comarker.header.frame_id = "odom";
@@ -141,7 +142,8 @@ void Visualizer::visualizeCommonSet(const std::vector<std::shared_ptr<Rendezvous
     commonSetPub_.publish(comarker);
 }
 
-void Visualizer::visualizeCommonSet(const std::vector<std::shared_ptr<RendezvousAstar::Node>>& common_set,
+void Visualizer::visualizeCommonSet(const std::unordered_set<std::shared_ptr<RendezvousAstar::Node>,
+    RendezvousAstar::NodePtrHash, RendezvousAstar::NodePtrEqual>& common_set,
     const std::vector<std::shared_ptr<RendezvousAstar::Node>>& nodes) const {
     visualization_msgs::Marker comarker, comarker2;
     geometry_msgs::Point p;
@@ -168,11 +170,11 @@ void Visualizer::visualizeCommonSet(const std::vector<std::shared_ptr<Rendezvous
         p.z     = rs.z();
         comarker.points.push_back(p);
     }
-    for (const auto &s : nodes) {
+    for (const auto& s : nodes) {
         auto rs = RendezvousAstar::NodeMap::posI2D(s->getPos());
-        p.x = rs.x();
-        p.y = rs.y();
-        p.z = rs.z();
+        p.x     = rs.x();
+        p.y     = rs.y();
+        p.z     = rs.z();
         comarker2.points.push_back(p);
     }
     commonSetPub_.publish(comarker);

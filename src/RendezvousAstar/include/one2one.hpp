@@ -25,7 +25,7 @@ namespace RendezvousAstar {
                     point[0] + static_cast<int32_t>(d[0]), point[1] + static_cast<int32_t>(d[1]), point[2]};
                 const auto node = node_map->getNode(next_point);
                 if (!NodeMap::query(next_point)) {
-                    if (!node || !node->inCommonSet(2,ugv_->getID())) {
+                    if (!node || !node->inCommonSet(2, ugv_->getID())) {
                         return false;
                     }
                 }
@@ -35,7 +35,7 @@ namespace RendezvousAstar {
 
         bool RendezvousCheck(const std::vector<std::shared_ptr<Node>>& nodes) const {
             auto node_map = NodeMap::getInstance();
-            for (const auto& node: nodes) {
+            for (const auto& node : nodes) {
                 Eigen::Vector3i point = node->getPos();
 
                 for (const auto& d : Astar::direct2d8_) {
@@ -43,7 +43,7 @@ namespace RendezvousAstar {
                         point[0] + static_cast<int32_t>(d[0]), point[1] + static_cast<int32_t>(d[1]), point[2]};
                     const auto node = node_map->getNode(next_point);
                     if (!NodeMap::query(next_point)) {
-                        if (!node || !node->inCommonSet(2,ugv_->getID())) {
+                        if (!node || !node->inCommonSet(2, ugv_->getID())) {
                             return false;
                         }
                     }
@@ -52,9 +52,9 @@ namespace RendezvousAstar {
             return true;
         }
 
-        static double Cost(const std::shared_ptr<Node>& n,const std::vector<int32_t>& path_id_set) {
+        static double Cost(const std::shared_ptr<Node>& n, const std::vector<int32_t>& path_id_set) {
             double power        = 1.0;
-            double vf           = 0.5 * power  + 0.7;
+            double vf           = 0.5 * power + 0.7;
             double vc           = 0.5;
             double hover_weight = 1.0, move_weight = 1.0;
             double gf = 0.0, gc = 0.0;
@@ -69,20 +69,21 @@ namespace RendezvousAstar {
 
             const double moving_time = gf / vf;
 
-             return hover_weight * hover_time + move_weight * moving_time + gc + gf;
+            return hover_weight * hover_time + move_weight * moving_time + gc + gf;
         }
 
-        std::vector<std::shared_ptr<Node>> getRendezvousNode(const std::vector<std::shared_ptr<Node>>& common_set,const std::vector<int32_t>& path_id_set) {
+        static std::vector<std::shared_ptr<Node>> getRendezvousNode(
+            const std::unordered_set<std::shared_ptr<Node>, NodePtrHash, NodePtrEqual>& common_set,
+            const std::vector<int32_t>& path_id_set) {
             std::vector<std::shared_ptr<Node>> rendezvous_node;
-            double min_cost=INT_MAX;
+            double min_cost = INT_MAX;
             for (const auto& node : common_set) {
-                double cost=Cost(node,path_id_set);
-                if (cost<min_cost) {
+                double cost = Cost(node, path_id_set);
+                if (cost < min_cost) {
                     rendezvous_node.clear();
                     rendezvous_node.emplace_back(node);
-                    min_cost=cost;
-                }
-                else if (cost==min_cost) {
+                    min_cost = cost;
+                } else if (cost == min_cost) {
                     rendezvous_node.emplace_back(node);
                 }
             }
@@ -122,7 +123,7 @@ namespace RendezvousAstar {
         void plan(std::vector<std::shared_ptr<Node>>& rendezvous_pos) {
             std::shared_ptr<Node> rendezvous_node = nullptr;
             std::vector<std::shared_ptr<Node>> rendezvous_node_set;
-            int cnt                               = 0;
+            int cnt = 0;
 
             //--------------init----------------------------------------------------------
             astar_->setThreshold(50);
@@ -142,13 +143,15 @@ namespace RendezvousAstar {
                 if (state_uav == Astar::STATE::map_search_done) {
                     break;
                 }
-                state_uav = astar_->runOnce(uav_, ugv_, ugv_->getPos(), uav_->getID(), ugv_->getID(), use_more_directs_);
+                state_uav =
+                    astar_->runOnce(uav_, ugv_, ugv_->getPos(), uav_->getID(), ugv_->getID(), use_more_directs_);
                 if (endCondition(state_ugv) || endCondition(state_uav)) {
                     // rendezvous_node =
-                    //     astar_->sortCommonSet([this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>& n2) {
+                    //     astar_->sortCommonSet([this](const std::shared_ptr<Node>& n1, const std::shared_ptr<Node>&
+                    //     n2) {
                     //         return Compare(n1, n2, path_id_set_);
                     //     });
-                    rendezvous_node_set=getRendezvousNode(astar_->getCommonSet(1),path_id_set_);
+                    rendezvous_node_set = getRendezvousNode(astar_->getCommonSet(1), path_id_set_);
                     if (state_uav == Astar::STATE::reached || RendezvousCheck(rendezvous_node_set)) {
                         break;
                     }
@@ -215,7 +218,7 @@ namespace RendezvousAstar {
 
             std::thread monitor([this, &rendezvous_promise, &getRendezvous]() {
                 while (!stop_.load()) {
-                    std::vector<std::shared_ptr<Node>> snapshot;
+                    std::unordered_set<std::shared_ptr<Node>,NodePtrHash,NodePtrEqual> snapshot;
                     {
                         std::shared_lock lock(mutex_);
                         snapshot = astar_->getCommonSet(1);
@@ -280,9 +283,9 @@ namespace RendezvousAstar {
             // merged_path.insert(merged_path.end(), path2.begin(), path2.end());
 
             ROS_INFO("nodeset num: %lu", NodeMap::getInstance()->getNodeNum());
-            ROS_INFO("rendezvous_node cost: %f",Cost(rendezvous_node[0], path_id_set_));
+            ROS_INFO("rendezvous_node cost: %f", Cost(rendezvous_node[0], path_id_set_));
             Visualizer& visualizer = Visualizer::getInstance(nh_);
-            visualizer.visualizeCommonSet(astar_->getCommonSet(1),rendezvous_node);
+            visualizer.visualizeCommonSet(astar_->getCommonSet(1), rendezvous_node);
             visualizer.visualizeCommon(NodeMap::posI2D(rendezvous_node[0]->getPos()));
             visualizer.visualizePath(path1, 1);
             visualizer.visualizePath(path2, 0);
