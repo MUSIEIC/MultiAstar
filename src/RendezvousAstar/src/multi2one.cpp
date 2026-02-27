@@ -3,6 +3,7 @@
 #include <atomic>
 #include <future>
 #include <geometry_msgs/PoseArray.h>
+#include <queue>
 #include <ros/ros.h>
 #include <std_msgs/Int32MultiArray.h>
 #include <thread>
@@ -150,11 +151,11 @@ namespace RendezvousAstar {
         static double score(const NodePtr& node, const AgentPtr& agent) {
             double p1  = agent->getPower();
             double np1 = (p1 - 0.2) / 0.8;
-            double ng1 = N_G(node->getG(agent->getID()), 0.1);
+            double ng1 = N_G(node->getG(agent->getID()), 0.05);
 
-            double ag1 = alphaG(node->getG(agent->getID()), 0.4, 0.5, 5.0);
+            double ag1 = alphaG(node->getG(agent->getID()), 0.4, 0.5, 50.0);
             double s1  = (1.0 - ag1) * (1.0 - ng1) + ag1 * (1.0 - np1);
-            s1         = p1 >= 0.2 ? s1 : 1.0;
+            s1         = p1 > 0.2 ? s1 : 1.0;
             return s1;
         }
 
@@ -169,17 +170,34 @@ namespace RendezvousAstar {
 
         double computeCost(const NodePtr& node, const std::vector<AgentPtr>& uavs) const {
             double t_g      = node->getG(ugvs_[0]->getID()) / 0.5; // ugv speed :0.3
-            double cost     = 0.0;
             double t_l      = 1.0;
-            double t_before = -1000;
-            for (const auto& uav : uavs) {
-                double t = node->getG(uav->getID()) / (0.7 + (0.5 * uav->getPower()));
-                t        = std::max({t, t_before + t_l, t_g});
-                cost     = std::max(cost, t + t_l);
-                t_before = t;
+            double plat_num=1;
+            // double t_before = -1000;
+            // for (const auto& uav : uavs) {
+            //     double t = node->getG(uav->getID()) / (0.7 + (0.5 * uav->getPower()));
+            //     t        = std::max({t, t_before + t_l, t_g});
+            //     cost     = std::max(cost, t + t_l);
+            //     t_before = t;
+            // }
+            std::priority_queue<double,std::vector<double>, std::greater<double>> pq;
+            for (int i=0;i<plat_num;++i)
+                pq.push(t_g);
+            for (const auto & uav:uavs) {
+                double t=node->getG(uav->getID()) / (0.7 + (0.5 * uav->getPower()));
+                double available_time=pq.top();
+                pq.pop();
+                if (available_time>=t)
+                    pq.push(available_time+t_l);
+                else
+                    pq.push(t+t_l);
+            }
+            double mx=0;
+            while (!pq.empty()) {
+                mx=std::max(mx,pq.top());
+                pq.pop();
             }
 
-            return cost;
+            return mx;
         }
 
         // bool compare(const NodePtr& n1, const NodePtr& n2) const {
@@ -196,7 +214,7 @@ namespace RendezvousAstar {
         // }
 
         std::vector<std::shared_ptr<Node>> getRendezvousNode(
-            const std::unordered_set<std::shared_ptr<Node>, NodePtrHash, NodePtrEqual>& common_set) const {
+            const std::unordered_set<std::shared_ptr<Node>, NodePtrHash, NodePtrEqual>& common_set,double& min_cost) const {
             std::vector<std::shared_ptr<Node>> rendezvous_node;
             std::vector<AgentPtr> uavs;
             auto ids = astar_->getIdInUgv();
@@ -206,7 +224,7 @@ namespace RendezvousAstar {
                 }
             }
 
-            double min_cost = INT_MAX;
+            min_cost = INT_MAX;
             for (const auto& node : common_set) {
                 computePriority(node, uavs);
                 double cost = computeCost(node, uavs);
@@ -292,8 +310,10 @@ namespace RendezvousAstar {
 
 
                         // const auto node = snapshot.front();
-                        nodes = getRendezvousNode(snapshot);
+                        double cost=INT_MAX;
+                        nodes = getRendezvousNode(snapshot,cost);
                         if (rendezvousCheck(nodes)) {
+                            ROS_INFO("min Cost: %.2f",cost);
                             getRendezvous = true;
                             stop_.store(true);
                         }
