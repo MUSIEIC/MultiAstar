@@ -1,56 +1,42 @@
 Obstacles:
   - left_pos:
-      - -1.4
-      - 0.8
-    length: 0.6
-    width: 0.3
-    height: 0.6
+      - -10
+      - -10
+    length: 10
+    width: 2
+    height: 2
 
   - left_pos:
-      - 0.55
-      - 0.90
-    length: 0.3
-    width: 0.6
-    height: 0.9
+      - -10
+      - -8
+    length: 2
+    width: 8
+    height: 2
 
   - left_pos:
-      - 0.85
-      -  0.6
-    length: 0.6
-    width: 0.3
-    height: 1.2
+      - -8
+      - -2
+    length: 6
+    width: 2
+    height: 2
 
   - left_pos:
-      - -1.9
-      - -1.5
-    length: 1.2
-    width: 0.3
-    height: 1.2
+      - -2
+      - -8
+    length: 2
+    width: 8
+    height: 2
 
   - left_pos:
-      - -0.7
-      - -1.5
-    length: 0.3
-    width: 1.8
-    height: 1.2
+      - 1
+      - 2
+    length: 2
+    width: 4
+    height: 5
 
   - left_pos:
-      - -1.9
-      - 0.0
-    length: 1.2
-    width: 0.3
-    height: 1.2
-
-  - left_pos:
-      - 0.6
-      - -1.4
-    length: 0.3
-    width: 0.6
-    height: 0.6
-
-  - left_pos:
-      - 1.2
-      - -0.3
-    length: 0.3
-    width: 0.3
-    height: 0.6
+      - 6
+      - 2
+    length: 4
+    width: 2
+    height: 5
