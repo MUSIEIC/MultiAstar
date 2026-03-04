@@ -23,4 +23,4 @@
 
 智能体各自并行调用A*方法类执行搜索，由具体实现决定搜索的结束方式。
 ## 致谢
-本项目地图构建模块引用自[GCOPTER])(https://github.com/ZJU-FAST-Lab/GCOPTER)并参考了ROS交互方式。
+本项目地图构建模块引用自[GCOPTER](https://github.com/ZJU-FAST-Lab/GCOPTER)并参考了ROS交互方式。
